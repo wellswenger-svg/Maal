@@ -1,0 +1,78 @@
+services:
+  - type: web
+    name: wan-studio-api
+    runtime: python
+    plan: free
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --no-access-log
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: wan_studio
+      - key: COMFYUI_URL
+        sync: false
+      - key: COMFYUI_DIR
+        value: ""
+      - key: FLUX_UNET
+        value: flux1-dev-fp8.safetensors
+      - key: FLUX_CLIP_L
+        value: clip_l.safetensors
+      - key: FLUX_T5
+        value: t5xxl_fp8_e4m3fn.safetensors
+      - key: FLUX_VAE
+        value: ae.safetensors
+      - key: FLUX_GUIDANCE
+        value: "4.0"
+      - key: IMAGE_WIDTH
+        value: "1024"
+      - key: IMAGE_HEIGHT
+        value: "1024"
+      - key: IMAGE_DENOISE
+        value: "0.55"
+      - key: IMAGE_DENOISE_CAP
+        value: "0.85"
+      - key: SAMPLER_STEPS
+        value: "28"
+      - key: RAW_PROMPT
+        value: "true"
+      - key: AI_ENGINE_DEV_MODE
+        value: "false"
+      - key: AI_ENGINE_VLM_ENABLED
+        value: "true"
+      - key: WAN_UNET_HIGH
+        value: wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors
+      - key: WAN_UNET_LOW
+        value: wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors
+      - key: WAN_VAE
+        value: wan_2.1_vae.safetensors
+      - key: WAN_CLIP
+        value: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+      - key: WAN_SHIFT
+        value: "5.0"
+      - key: VIDEO_WIDTH
+        value: "640"
+      - key: VIDEO_HEIGHT
+        value: "640"
+      - key: VIDEO_LENGTH
+        value: "49"
+      - key: VIDEO_FPS
+        value: "16"
+      - key: VIDEO_STEPS
+        value: "20"
+      - key: VIDEO_CFG
+        value: "3.5"
+      - key: ZERO_RESIDUE
+        value: "true"
+      - key: SCRUB_PASSES
+        value: "1"
+      - key: SCRUB_CLEAR_ALL_HISTORY
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SERVE_FRONTEND
+        value: "false"

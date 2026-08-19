@@ -1,0 +1,7 @@
+{
+  "name": "contrnt",
+  "private": true,
+  "scripts": {
+    "wipe": "node scripts/wipe_local_media.mjs"
+  }
+}

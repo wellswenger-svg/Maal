@@ -1,0 +1,37 @@
+---
+description: Use tokens&cmd for GitHub/Vercel/Render; never browser GitHub login prompts
+alwaysApply: true
+---
+
+# Tokens and non-interactive auth
+
+## Source of truth
+
+Read credentials only from the gitignored file `tokens&cmd` at the repo root:
+
+| Key | Use for |
+|-----|---------|
+| `github=` | `git push` / `gh` to **wellswenger-svg/Maal** |
+| `vercel=` | Vercel CLI/API (`VERCEL_TOKEN`) |
+| `render=` | Render API (`Authorization: Bearer …`) |
+
+Never commit `tokens&cmd`, `.env`, or tokens into git. Never ask the user to pick a GitHub account in the browser.
+
+## GitHub push / gh (mandatory)
+
+- Target remote: `origin` → `https://github.com/wellswenger-svg/Maal.git` (`main`).
+- **Do not** use browser/`gh` device login, Git Credential Manager GUI, or AtomikAudio account prompts.
+- Before push, load the PAT from `tokens&cmd` and push non-interactively, e.g. PowerShell:
+
+```powershell
+$gh = (Select-String -Path 'tokens&cmd' -Pattern '^github=(.+)$').Matches.Groups[1].Value.Trim()
+$env:GIT_TERMINAL_PROMPT = '0'
+$env:GH_TOKEN = $gh
+$env:GITHUB_TOKEN = $gh
+# Git HTTPS needs Basic x-access-token (Bearer often fails for git)
+$b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("x-access-token:$gh"))
+git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $b64" push origin HEAD
+```
+
+- Prefer `GH_TOKEN`/`GITHUB_TOKEN` from that file for any `gh api` / `gh pr` calls on this repo.
+- If `gh auth status` shows AtomikAudio (or any other user), do **not** follow browser switch prompts — use the bearer header / `GH_TOKEN` above instead.

@@ -1,0 +1,24 @@
+---
+description: Canonical production URLs and push/deploy targets for Wan Studio
+alwaysApply: true
+---
+
+# Production deploy targets
+
+When the user says **push**, **deploy**, or **push and deploy**, use only these endpoints (see `PRODUCTION_URLS.md`):
+
+| What | Canonical |
+|------|-----------|
+| Frontend | https://frontend-six-chi-37.vercel.app |
+| API | https://wan-studio-api.onrender.com |
+| Repo | https://github.com/wellswenger-svg/Maal (`main`) |
+
+## Rules
+
+- Do **not** create a new Vercel project or Render service for deploys.
+- Deploy frontend to existing Vercel project `frontend` on team `wellswenger-1737s-projects` (alias `frontend-six-chi-37.vercel.app`).
+- Deploy/redeploy API on existing Render service `wan-studio-api` (`srv-d9ot8spt0dsc73bqjv0g`).
+- Keep `VITE_API_URL=https://wan-studio-api.onrender.com` and `CORS_ORIGINS=https://frontend-six-chi-37.vercel.app`.
+- After restarting a Cloudflare tunnel, update Render `COMFYUI_URL` to the new tunnel URL and redeploy (or restart) the API.
+- Never commit tokens from `tokens&cmd` or `.env`.
+- For push/deploy auth, follow `.cursor/rules/tokens-and-auth.mdc` — read tokens from `tokens&cmd`, never browser GitHub login.
