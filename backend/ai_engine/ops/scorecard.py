@@ -149,6 +149,7 @@ WORKFLOW_SCORES: dict[str, int] = {
     "image_img2img.v0_legacy": 70,
     "background_remove.v1": 68,
     "instruction_edit.v1": 72,
+    "keep_outfit_reshape.v1": 73,
     "clothing_replace.v1": 74,
     "object_replace.v1": 73,
     "object_remove.v1": 72,

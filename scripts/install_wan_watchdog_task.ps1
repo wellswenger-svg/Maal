@@ -1,22 +1,30 @@
-# Install Wan stack watchdog at user logon (GPU PC).
-# Run once: powershell -ExecutionPolicy Bypass -File scripts/install_wan_watchdog_task.ps1
+# Install hidden Wan GPU watchdog at user logon (no taskbar consoles).
+# Run: powershell -ExecutionPolicy Bypass -File scripts/install_wan_watchdog_task.ps1
 
 $ErrorActionPreference = "Stop"
 $repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$python = (Get-Command python -ErrorAction Stop).Source
-$script = Join-Path $repo "scripts\wan_stack_watchdog.py"
-if (-not (Test-Path $script)) { throw "Missing $script" }
+$vbs = Join-Path $repo "scripts\start_wan_stack_hidden.vbs"
+if (-not (Test-Path $vbs)) { throw "Missing $vbs" }
 
 $startup = [Environment]::GetFolderPath("Startup")
-$cmdPath = Join-Path $startup "WanStudioGpuWatchdog.cmd"
-@(
-  "@echo off"
-  "cd /d `"$repo`""
-  "`"$python`" `"$script`""
-) | Set-Content -Path $cmdPath -Encoding ASCII
-Write-Host "Installed login starter: $cmdPath"
+$lnkPath = Join-Path $startup "WanStudioGpuWatchdog.lnk"
+$w = New-Object -ComObject WScript.Shell
+$lnk = $w.CreateShortcut($lnkPath)
+$lnk.TargetPath = "wscript.exe"
+$lnk.Arguments = "`"$vbs`""
+$lnk.WorkingDirectory = $repo
+$lnk.WindowStyle = 7
+$lnk.Description = "Wan GPU watchdog (hidden)"
+$lnk.Save()
 
-Write-Host "Starting watchdog now in a new window..."
-Start-Process -FilePath $python -ArgumentList "`"$script`"" -WorkingDirectory $repo -WindowStyle Normal
-Write-Host "Done. Leave this PC on (disable sleep)."
-Write-Host "From phone: unlock PIN 9977 -> Controls -> Restart GPU when stuck."
+foreach ($name in @(
+    "WanStudioGpuWatchdog.cmd",
+    "WanStudioCloudflared.cmd"
+  )) {
+  $p = Join-Path $startup $name
+  if (Test-Path $p) { Remove-Item $p -Force }
+}
+
+Write-Host "Installed hidden login starter: $lnkPath"
+Write-Host "Logs: $repo\tmp_test\watchdog.log"
+Write-Host "Leave this PC on (disable sleep)."

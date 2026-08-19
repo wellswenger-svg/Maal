@@ -55,6 +55,52 @@ class KontextGraphTests(unittest.TestCase):
         pos = g["4"]["inputs"]["text"]
         self.assertEqual(pos, "shirt red")
 
+    def test_i2i_wrap_mode_fabric(self) -> None:
+        g = build_i2i_prompt(
+            image_name="in.png",
+            positive="more volume",
+            negative=None,
+            flux_unet="flux1-dev-fp8.safetensors",
+            flux_clip_l="clip_l.safetensors",
+            flux_t5="t5xxl_fp8_e4m3fn.safetensors",
+            flux_vae="ae.safetensors",
+            width=1024,
+            height=1024,
+            steps=28,
+            guidance=3.5,
+            seed=1,
+            denoise=0.62,
+            denoise_cap=0.70,
+            wrap_preserve=False,
+            wrap_mode="fabric",
+        )
+        pos = g["4"]["inputs"]["text"]
+        self.assertIn("Fabric may drape", pos)
+        self.assertIn("more volume", pos)
+
+    def test_i2i_pulid_nodes(self) -> None:
+        g = build_i2i_prompt(
+            image_name="in.png",
+            positive="edit",
+            negative=None,
+            flux_unet="flux1-dev-fp8.safetensors",
+            flux_clip_l="clip_l.safetensors",
+            flux_t5="t5xxl_fp8_e4m3fn.safetensors",
+            flux_vae="ae.safetensors",
+            width=768,
+            height=768,
+            steps=20,
+            guidance=3.5,
+            seed=1,
+            denoise=0.40,
+            pulid_file="pulid_flux_v0.9.1.safetensors",
+        )
+        types = {n["class_type"] for n in g.values()}
+        self.assertIn("ApplyPulidFlux", types)
+        self.assertIn("PulidFluxModelLoader", types)
+        self.assertEqual(g["11"]["inputs"]["model"], ["73", 0])
+        self.assertEqual(g["70"]["inputs"]["pulid_file"], "pulid_flux_v0.9.1.safetensors")
+
     def test_i2i_pose_controlnet_nodes(self) -> None:
         g = build_i2i_prompt(
             image_name="in.png",

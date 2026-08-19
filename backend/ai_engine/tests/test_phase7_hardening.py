@@ -26,6 +26,7 @@ class Phase7ScorecardTests(unittest.TestCase):
         required = [
             "clothing_replace.v1",
             "instruction_edit.v1",
+            "keep_outfit_reshape.v1",
             "background_remove.v1",
             "video_i2v.v1",
             "image_img2img.v0_legacy",

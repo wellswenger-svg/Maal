@@ -1,8 +1,8 @@
 """Paste the start-image face back after a full-frame edit.
 
-PuLID / InsightFace are catalogued but not wired into the Flux graph.
-Region-limited edits: GPU may only change a tight inner region. Every other
-pixel is copied from the start photo.
+Region-limited edits: GPU may only change a torso-core region (sampler mask).
+Strap / hem / face restore happens in post, not on the noise_mask.
+PuLID is applied in the Flux img2img graph when pulid_file is set.
 """
 
 from __future__ import annotations
@@ -36,16 +36,20 @@ def restore_original_face(original_bytes: bytes, edited_bytes: bytes) -> bytes:
 
 
 def bust_inpaint_mask_png(image_bytes: bytes) -> bytes:
-    """White PNG mask covering the inner edit region — for Flux img2img noise_mask."""
+    """White PNG mask covering the inner edit region — for Flux img2img noise_mask.
+
+    Target coverage is 12–20% of the frame. Do not subtract strap/garment guards
+    here; those belong only in post restore.
+    """
     orig = Image.open(BytesIO(image_bytes)).convert("RGB")
     face = detect_face_box(orig) or _portrait_prior(orig.size)
     mask = chest_keep_mask(orig.size, face)
-    # Slightly grow for the sampler; post uses the tighter undilated core.
-    grow = max(3, int(min(orig.size) * 0.006))
+    grow = max(5, int(min(orig.size) * 0.012))
     if grow % 2 == 0:
         grow += 1
     mask = mask.filter(ImageFilter.MaxFilter(size=grow))
     mask = _clip_to_bust_bounds(mask, orig.size, face)
+    mask = _ensure_edit_coverage(mask, orig.size, face, lo=0.12, hi=0.20)
     rgb = Image.merge("RGB", (mask, mask, mask))
     buf = BytesIO()
     rgb.save(buf, format="PNG")
@@ -80,34 +84,22 @@ def chest_keep_mask(
     fx, fy, fw, fh = face_box
     mid = min(max(fx + fw / 2.0, w * 0.38), w * 0.62)
     chin = min(max(fy + fh * 1.02, h * 0.30), h * 0.48)
-    y1 = chin + h * 0.015
-    y2 = min(h * 0.58, chin + h * 0.26)
-    half = min(fw * 0.70, w * 0.20)
-    x1 = max(w * 0.30, mid - half)
-    x2 = min(w * 0.70, mid + half)
+    y1 = chin + h * 0.01
+    y2 = min(h * 0.78, chin + h * 0.48)
+    half = min(fw * 1.45, w * 0.38)
+    x1 = max(w * 0.22, mid - half)
+    x2 = min(w * 0.78, mid + half)
     mask = Image.new("L", (w, h), 0)
     draw = ImageDraw.Draw(mask)
     cy = (y1 + y2) / 2.0
     ry = max(6.0, (y2 - y1) / 2.0)
-    rx = max(6.0, (x2 - x1) * 0.32)
-    dx = (x2 - x1) * 0.24
+    rx = max(6.0, (x2 - x1) * 0.52)
+    dx = (x2 - x1) * 0.30
     for cx in (mid - dx, mid + dx):
         draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=255)
     radius = max(3, int(min(w, h) * 0.007))
     mask = mask.filter(ImageFilter.GaussianBlur(radius=radius))
     mask = _clip_to_bust_bounds(mask, size, face_box)
-    guard = garment_restore_mask(size, face_box)
-    if np is not None:
-        m = np.asarray(mask, dtype=np.uint8)
-        g = np.asarray(guard, dtype=np.uint8)
-        m = np.where(g > 80, 0, m).astype(np.uint8)
-        return Image.fromarray(m, mode="L")
-    px = mask.load()
-    gp = guard.load()
-    for yy in range(h):
-        for xx in range(w):
-            if gp[xx, yy] > 80:
-                px[xx, yy] = 0
     return mask
 
 
@@ -123,20 +115,55 @@ def _clip_to_bust_bounds(
     arr = np.array(mask, dtype=np.uint8, copy=True) if np is not None else None
     if arr is None:
         px = mask.load()
-        x_lo, x_hi = int(w * 0.28), int(w * 0.72)
-        y_lo, y_hi = int(chin), int(h * 0.59)
+        x_lo, x_hi = int(w * 0.20), int(w * 0.80)
+        y_lo, y_hi = int(chin), int(h * 0.78)
         for yy in range(h):
             for xx in range(w):
                 if xx < x_lo or xx > x_hi or yy < y_lo or yy > y_hi:
                     px[xx, yy] = 0
         return mask
-    x_lo, x_hi = int(w * 0.28), int(w * 0.72)
-    y_lo, y_hi = int(chin), int(h * 0.59)
+    x_lo, x_hi = int(w * 0.20), int(w * 0.80)
+    y_lo, y_hi = int(chin), int(h * 0.78)
     arr[:, :x_lo] = 0
     arr[:, x_hi:] = 0
     arr[:y_lo, :] = 0
     arr[y_hi:, :] = 0
     return Image.fromarray(arr, mode="L")
+
+
+def _mask_coverage(mask: Image.Image) -> float:
+    if np is None:
+        hist = mask.histogram()
+        on = sum(hist[128:])
+        return on / float(max(1, mask.size[0] * mask.size[1]))
+    arr = np.array(mask, dtype=np.uint8)
+    return float((arr > 127).mean())
+
+
+def _ensure_edit_coverage(
+    mask: Image.Image,
+    size: tuple[int, int],
+    face_box: tuple[int, int, int, int],
+    *,
+    lo: float = 0.12,
+    hi: float = 0.20,
+) -> Image.Image:
+    """Grow or shrink the sampler mask into the 12–20% coverage band."""
+    cur = mask
+    cov = _mask_coverage(cur)
+    odd = 5
+    while cov < lo and odd <= 41:
+        cur = cur.filter(ImageFilter.MaxFilter(size=odd))
+        cur = _clip_to_bust_bounds(cur, size, face_box)
+        cov = _mask_coverage(cur)
+        odd += 4
+    odd = 3
+    while cov > hi and odd <= 21:
+        cur = cur.filter(ImageFilter.MinFilter(size=odd))
+        cur = _clip_to_bust_bounds(cur, size, face_box)
+        cov = _mask_coverage(cur)
+        odd += 2
+    return cur
 
 
 def _bust_lobes(

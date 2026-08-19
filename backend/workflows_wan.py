@@ -162,6 +162,7 @@ def build_i2i_prompt(
     denoise: float,
     denoise_cap: float = 0.85,
     wrap_preserve: bool = False,
+    wrap_mode: str | None = None,
     loras: list[tuple[str, float, float]] | None = None,
     controlnet_name: str | None = None,
     control_image_name: str | None = None,
@@ -169,23 +170,39 @@ def build_i2i_prompt(
     control_strength: float = 0.65,
     control_end: float = 0.85,
     mask_image_name: str | None = None,
+    pulid_file: str | None = None,
+    pulid_weight: float = 0.80,
+    pulid_provider: str = "CUDA",
 ) -> dict[str, Any]:
     """
     Flux Dev img2img — encode source; prompt text goes through as-is unless wrap_preserve.
     CFG stays at 1.0; guidance is applied via FluxGuidance.
     Optional Union ControlNet (pose/depth/…) via control_image_name.
+    Optional PuLID on the sampled model (identity pass). wrap_mode fabric keeps
+    garment type/color while allowing drape.
     """
     width, height = _snap(width), _snap(height)
     cap = max(0.28, min(0.95, float(denoise_cap)))
     strength = max(0.20, min(cap, float(denoise)))
     edit = (positive or "").strip()
-    if wrap_preserve:
+    mode = (wrap_mode or "").strip().lower()
+    if not mode and wrap_preserve:
+        mode = "identity"
+    if mode in ("identity", "true", "1"):
         pos = (
             "Photorealistic photograph. This is an image edit of the provided photo. "
             "Preserve identity, face, pose, camera angle, framing, lighting, "
             "background, the same clothes (same color, cut, neckline, and fabric), "
             "and any object already in her hands. Do not invent a new person or scene. "
             f"Only apply this requested change: {edit}"
+        )
+    elif mode == "fabric":
+        pos = (
+            "Photorealistic photograph of the same person. Keep identity, face, hair, "
+            "pose, camera, lighting, and background. Keep the same garment type and color. "
+            "Fabric may drape and fill as the body shape changes. Do not invent a new "
+            "outfit, person, or scene. Request: "
+            f"{edit}"
         )
     else:
         pos = edit
@@ -335,10 +352,40 @@ def build_i2i_prompt(
         }
         latent_ref = "93"
 
+    model_for_sampler = "10"
+    if pulid_file:
+        # IDs 70+ — LoRA chain starts at 20; ControlNet 14-18; mask 90+.
+        graph["70"] = {
+            "class_type": "PulidFluxModelLoader",
+            "inputs": {"pulid_file": pulid_file},
+        }
+        graph["71"] = {
+            "class_type": "PulidFluxEvaClipLoader",
+            "inputs": {},
+        }
+        graph["72"] = {
+            "class_type": "PulidFluxInsightFaceLoader",
+            "inputs": {"provider": pulid_provider if pulid_provider in ("CPU", "CUDA", "ROCM") else "CUDA"},
+        }
+        graph["73"] = {
+            "class_type": "ApplyPulidFlux",
+            "inputs": {
+                "model": ["10", 0],
+                "pulid_flux": ["70", 0],
+                "eva_clip": ["71", 0],
+                "face_analysis": ["72", 0],
+                "image": ["8", 0],
+                "weight": float(pulid_weight),
+                "start_at": 0.0,
+                "end_at": 1.0,
+            },
+        }
+        model_for_sampler = "73"
+
     graph["11"] = {
         "class_type": "KSampler",
         "inputs": {
-            "model": ["10", 0],
+            "model": [model_for_sampler, 0],
             "seed": seed,
             "steps": int(steps),
             "cfg": 1.0,

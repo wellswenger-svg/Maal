@@ -157,7 +157,11 @@ async def run_post(
             hints = plan.params_hints or {}
             can_lock = (
                 key in ("face_detailer", "face_lock")
-                and bool(hints.get("clothed_enhance"))
+                and (
+                    bool(hints.get("clothed_enhance"))
+                    or str(getattr(plan, "task_type", "") or "")
+                    == "edit.keep_outfit_reshape"
+                )
                 and not bool(hints.get("pose_edit"))
                 and not bool(hints.get("fluid_edit"))
                 and original_bytes

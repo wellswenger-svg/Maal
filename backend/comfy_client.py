@@ -139,6 +139,7 @@ class ComfyClient:
         edit_graph: str = "img2img",
         denoise_cap: float = 0.85,
         wrap_preserve: bool = False,
+        wrap_mode: Optional[str] = None,
         loras: Optional[list] = None,
         controlnet_name: Optional[str] = None,
         control_image_bytes: Optional[bytes] = None,
@@ -146,6 +147,9 @@ class ComfyClient:
         control_strength: float = 0.65,
         control_end: float = 0.85,
         mask_bytes: Optional[bytes] = None,
+        pulid_file: Optional[str] = None,
+        pulid_weight: float = 0.80,
+        pulid_provider: str = "CUDA",
     ) -> tuple[bytes, str]:
         seed = seed if seed is not None else random.randint(0, 2**32 - 1)
         image_bytes, width, height = _prep_edit_image(
@@ -224,6 +228,7 @@ class ComfyClient:
                     else self.settings.image_denoise,
                     denoise_cap=cap,
                     wrap_preserve=bool(wrap_preserve),
+                    wrap_mode=wrap_mode,
                     loras=lora_stack,
                     controlnet_name=controlnet_name if control_name else None,
                     control_image_name=control_name,
@@ -231,6 +236,9 @@ class ComfyClient:
                     control_strength=control_strength,
                     control_end=control_end,
                     mask_image_name=mask_name,
+                    pulid_file=pulid_file,
+                    pulid_weight=pulid_weight,
+                    pulid_provider=pulid_provider,
                 )
             return await self._run_and_fetch(
                 workflow,

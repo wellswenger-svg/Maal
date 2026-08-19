@@ -485,7 +485,7 @@ def ensure_gpu_agent(tokens: dict[str, str]) -> None:
         [sys.executable, str(REPO / "scripts" / "gpu_agent.py")],
         cwd=str(REPO),
         env=env,
-        creationflags=_new_console_flags(),
+        creationflags=_no_window_flags(),
     )
     for _ in range(20):
         time.sleep(1)

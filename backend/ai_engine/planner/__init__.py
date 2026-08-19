@@ -9,6 +9,7 @@ from backend.ai_engine.schema import ExecutionPlan, GenerateRequest
 # Safety net when a task_type is classified but no workflow is enabled yet.
 _TASK_FALLBACK = {
     "edit.face_swap": "edit.face",  # beta swap → face edit if beta disabled
+    "edit.keep_outfit_reshape": "edit.general_instruction",
 }
 
 
