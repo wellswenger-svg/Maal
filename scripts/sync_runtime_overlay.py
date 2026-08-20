@@ -171,6 +171,17 @@ def poll_health(*, attempts: int = 24, pause_sec: float = 8.0) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--status", action="store_true")
+    ap.add_argument(
+        "--existing",
+        action="store_true",
+        help="Upload only overlay files that exist locally; leave others on Render",
+    )
+    ap.add_argument(
+        "--files",
+        nargs="+",
+        default=(),
+        help="Upload only these overlay filenames",
+    )
     args = ap.parse_args()
 
     if args.status:
@@ -180,14 +191,28 @@ def main() -> int:
         return 0 if ok else 2
 
     token = _load_render_token()
-    missing = [n for n in OVERLAY_FILES if not (PRIVATE_DIR / n).is_file()]
-    if missing:
-        raise SystemExit(f"Missing overlay files in private/: {missing}")
+    names = list(OVERLAY_FILES)
+    if args.existing or args.files:
+        wanted = (
+            tuple(Path(x).name for x in args.files)
+            if args.files
+            else OVERLAY_FILES
+        )
+        names = [n for n in wanted if (PRIVATE_DIR / n).is_file()]
+        missing = [n for n in wanted if n not in names]
+        if missing:
+            print(f"Skipping missing overlay files: {missing}")
+        if not names:
+            raise SystemExit("No overlay files to upload")
+    else:
+        missing = [n for n in OVERLAY_FILES if not (PRIVATE_DIR / n).is_file()]
+        if missing:
+            raise SystemExit(f"Missing overlay files in private/: {missing}")
 
     print("Existing secret files:", list_secret_names(token) or "(none)")
     print("Uploading overlay files…")
     failed = 0
-    for name in OVERLAY_FILES:
+    for name in names:
         text = (PRIVATE_DIR / name).read_text(encoding="utf-8")
         code = put_secret_file(token, name, text)
         if code not in (200, 201):

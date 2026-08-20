@@ -57,8 +57,9 @@ def _ensure_private_copies() -> None:
             continue
         dest = PRIVATE_DIR / src.name
         try:
-            if not dest.is_file() or dest.stat().st_mtime < src.stat().st_mtime:
-                shutil.copy2(src, dest)
+            # Always refresh from secrets. mtime-only checks can leave a stale
+            # private/ copy mounted after secret-file updates.
+            shutil.copy2(src, dest)
         except OSError:
             continue
 
@@ -88,8 +89,17 @@ def load_private_module(name: str) -> Optional[Any]:
     if path is None:
         return None
     mod_name = f"wan_private_{name}"
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = None
     existing = sys.modules.get(mod_name)
-    if existing is not None and getattr(existing, "__wan_overlay_ready__", False):
+    if (
+        existing is not None
+        and getattr(existing, "__wan_overlay_ready__", False)
+        and getattr(existing, "__wan_overlay_mtime__", None) == mtime
+        and getattr(existing, "__wan_overlay_path__", None) == str(path)
+    ):
         return existing
     spec = importlib.util.spec_from_file_location(mod_name, path)
     if spec is None or spec.loader is None:
@@ -103,6 +113,8 @@ def load_private_module(name: str) -> Optional[Any]:
         sys.modules.pop(mod_name, None)
         return None
     mod.__wan_overlay_ready__ = True
+    mod.__wan_overlay_mtime__ = mtime
+    mod.__wan_overlay_path__ = str(path)
     return mod
 
 
