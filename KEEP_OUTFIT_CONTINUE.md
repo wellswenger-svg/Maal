@@ -23,6 +23,8 @@ Do **not** edit `.cursor/plans/keep-outfit_edit_quality_6312ed4d.plan.md`.
 4. **Confirm production path:** Vercel → Render → Cloudflare tunnel → Comfy `:8188`.
 5. **Freeze** LoRA/denoise/mask numbers only after three fixtures pass.
 
+For training a custom reshape LoRA that generalizes across photos (not per-image denoise), see [`KEEP_OUTFIT_LORA_TRAIN.md`](KEEP_OUTFIT_LORA_TRAIN.md).
+
 ## Key files
 
 | Layer | Path |
