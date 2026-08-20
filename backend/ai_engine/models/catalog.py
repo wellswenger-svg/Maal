@@ -72,6 +72,10 @@ def _find_weight(filename: str) -> Path | None:
         "controlnet",
         "pulid",
         "insightface",
+        "sams",
+        "sam",
+        "sam2",
+        "groundingdino",
         "",
     )
     for root in _comfy_model_roots():

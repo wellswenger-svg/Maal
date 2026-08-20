@@ -35,12 +35,26 @@ def restore_original_face(original_bytes: bytes, edited_bytes: bytes) -> bytes:
     return buf.getvalue()
 
 
-def bust_inpaint_mask_png(image_bytes: bytes) -> bytes:
+def bust_inpaint_mask_png(
+    image_bytes: bytes,
+    *,
+    settings=None,
+    prefer_comfy: bool = True,
+) -> bytes:
     """White PNG mask covering the inner edit region — for Flux img2img noise_mask.
 
-    Target coverage is 12–20% of the frame. Do not subtract strap/garment guards
-    here; those belong only in post restore.
+    Uses garment detection ∩ bust core when available (CLIPSeg / local fabric).
+    Target coverage is 12–20%. Strap restore stays in post only.
     """
+    try:
+        from backend.ai_engine.perception.garment_mask import keep_outfit_edit_mask_png
+
+        mask_png, _meta = keep_outfit_edit_mask_png(
+            image_bytes, settings=settings, prefer_comfy=prefer_comfy
+        )
+        return mask_png
+    except Exception:
+        pass
     orig = Image.open(BytesIO(image_bytes)).convert("RGB")
     face = detect_face_box(orig) or _portrait_prior(orig.size)
     mask = chest_keep_mask(orig.size, face)
@@ -50,14 +64,34 @@ def bust_inpaint_mask_png(image_bytes: bytes) -> bytes:
     mask = mask.filter(ImageFilter.MaxFilter(size=grow))
     mask = _clip_to_bust_bounds(mask, orig.size, face)
     mask = _ensure_edit_coverage(mask, orig.size, face, lo=0.12, hi=0.20)
+    soft = max(3, int(min(orig.size) * 0.008))
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=soft))
     rgb = Image.merge("RGB", (mask, mask, mask))
     buf = BytesIO()
     rgb.save(buf, format="PNG")
     return buf.getvalue()
 
 
-def restore_outside_chest(original_bytes: bytes, edited_bytes: bytes) -> bytes:
-    """Original everywhere except the inner GPU edit region."""
+def restore_outside_chest(
+    original_bytes: bytes,
+    edited_bytes: bytes,
+    *,
+    edit_mask_png: bytes | None = None,
+    garment_mask_png: bytes | None = None,
+) -> bytes:
+    """Original everywhere except the inner GPU edit region (soft edges)."""
+    if edit_mask_png:
+        try:
+            from backend.ai_engine.perception.garment_mask import soft_restore_outside_edit
+
+            return soft_restore_outside_edit(
+                original_bytes,
+                edited_bytes,
+                edit_mask_png,
+                garment_mask_png=garment_mask_png,
+            )
+        except Exception:
+            pass
     orig = Image.open(BytesIO(original_bytes)).convert("RGB")
     edit = Image.open(BytesIO(edited_bytes)).convert("RGB")
     if edit.size != orig.size:
@@ -65,8 +99,12 @@ def restore_outside_chest(original_bytes: bytes, edited_bytes: bytes) -> bytes:
 
     face = detect_face_box(orig) or _portrait_prior(orig.size)
     keep = chest_keep_mask(orig.size, face)
+    keep = keep.filter(ImageFilter.GaussianBlur(radius=max(2, int(min(orig.size) * 0.006))))
     out = Image.composite(edit, orig, keep)
-    out = Image.composite(orig, out, garment_restore_mask(orig.size, face))
+    straps = garment_restore_mask(orig.size, face)
+    straps = straps.point(lambda p: int(p * 0.85))
+    straps = straps.filter(ImageFilter.GaussianBlur(radius=max(2, int(min(orig.size) * 0.005))))
+    out = Image.composite(orig, out, straps)
     out = Image.composite(orig, out, _face_mask(orig.size, face))
     buf = BytesIO()
     out.save(buf, format="PNG")

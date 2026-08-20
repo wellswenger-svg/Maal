@@ -38,6 +38,7 @@ async def run_perception(
     want_sam = any(s in ("sam2", "sam", "segment") for s in stages)
     want_matte = any(s in ("matting", "birefnet", "rembg", "bg_remove") for s in stages)
     want_face = any(s in ("face_detect", "face") for s in stages)
+    want_garment = any(s in ("garment", "cloth", "clothing", "clipseg") for s in stages)
 
     phrases = [
         str(t.get("label") or t.get("phrase") or "").strip()
@@ -51,6 +52,16 @@ async def run_perception(
         phrases = _guess_phrases(pos)
 
     try:
+        if want_garment and not want_ground and not want_sam and not want_matte:
+            from backend.ai_engine.perception import garment_mask as gm
+
+            art.mask = gm.detect_garment_mask(image_bytes, settings=settings)
+            art.warnings.extend(art.mask.warnings)
+            art.stages_run.append("garment")
+            if art.mask.source in ("local_fabric", "heuristic"):
+                art.warnings.append("perception_degraded")
+            return art
+
         if want_matte and not want_ground and not want_sam:
             mask, rgba, warnings = matting.matte_subject(image_bytes, settings=settings)
             art.mask = mask
@@ -137,8 +148,8 @@ def _guess_phrases(text: str) -> list[str]:
     import re
 
     candidates = re.findall(
-        r"\b(shirt|jersey|jacket|hoodie|dress|pants|jeans|hair|face|background|"
-        r"person|man|woman|car|logo|sky|shoes|hat)\b",
+        r"\b(shirt|jersey|jacket|hoodie|dress|pants|jeans|top|blouse|hair|face|"
+        r"background|person|man|woman|car|logo|sky|shoes|hat|bust|chest)\b",
         text,
         flags=re.I,
     )

@@ -65,10 +65,18 @@ def _heuristic_box(phrase: str, width: int, height: int) -> BBox:
         return BBox(0.25 * width, 0.05 * height, 0.75 * width, 0.55 * height, label=phrase, score=0.4)
     # Clothing / torso — mid frame
     if re.search(
-        r"\b(shirt|jersey|jacket|hoodie|dress|clothes|clothing|outfit|pants|jeans)\b",
+        r"\b(shirt|jersey|jacket|hoodie|dress|clothes|clothing|outfit|pants|jeans|"
+        r"top|blouse|bust|cleavage|torso|chest)\b",
         p,
     ):
-        return BBox(0.2 * width, 0.25 * height, 0.8 * width, 0.85 * height, label=phrase, score=0.4)
+        return BBox(
+            0.22 * width,
+            0.28 * height,
+            0.78 * width,
+            0.78 * height,
+            label=phrase,
+            score=0.45,
+        )
     # Background — full frame (caller may invert)
     if re.search(r"\b(background|sky|wall|scene)\b", p):
         return BBox(0, 0, width, height, label=phrase, score=0.3)

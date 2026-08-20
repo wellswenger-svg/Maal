@@ -19,7 +19,7 @@ def preserve_outside_mask(
 ) -> bytes:
     """
     White in mask = edited region kept from `edited`; black = restore from `original`.
-    Supports outside-mask pixel delta exit criterion for masked edits.
+    Soft feather on the seam to reduce two-tone blemishes.
     """
     orig = Image.open(BytesIO(original_bytes)).convert("RGB")
     edit = Image.open(BytesIO(edited_bytes)).convert("RGB")
@@ -30,8 +30,10 @@ def preserve_outside_mask(
     if mask.size != orig.size:
         mask = mask.resize(orig.size, Image.Resampling.BILINEAR)
 
-    # Soften mask edge slightly
-    mask = mask.point(lambda p: 255 if p >= 128 else 0)
+    from PIL import ImageFilter
+
+    soft = max(2, int(min(orig.size) * 0.005))
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=soft))
     out = Image.composite(edit, orig, mask)
     buf = BytesIO()
     out.save(buf, format="PNG")
@@ -65,10 +67,14 @@ async def run_post(
             # Heuristic / failed masks are rectangular priors — compositing them
             # onto Kontext full-frame edits punches a hard box over the shirt.
             mask_source = str(getattr(mask, "source", "") or "").lower() if mask else ""
+            # clipseg / local_fabric / sam are safe soft masks for outside-preserve.
             skip_composite = (
                 "mask_failed" in pw
-                or "perception_degraded" in pw
                 or mask_source in ("heuristic", "center", "full_frame", "")
+                or (
+                    "perception_degraded" in pw
+                    and mask_source not in ("clipseg", "local_fabric", "garment")
+                )
                 or "kontext" in str(result.model_label or "").lower()
             )
             if (

@@ -28,6 +28,7 @@ def register() -> None:
     )
 
     # Keep-outfit reshape — never Kontext ReferenceLatent (denoise is ignored there).
+    # Garment mask uses CLIPSeg / local fabric (SAM optional refine when weights present).
     register_edit_workflow(
         id="keep_outfit_reshape",
         task_types=["edit.keep_outfit_reshape"],
@@ -35,8 +36,8 @@ def register() -> None:
         preferred_models=["backbone.flux_dev_fp8"],
         compatible_models=["backbone.flux_kontext_dev_fp8"],
         minimum_models=["backbone.flux_dev_fp8"],
-        optional_models=["identity.pulid_flux"],
-        perception=[],
+        optional_models=["identity.pulid_flux", "seg.sam", "seg.sam2", "grounding.dino"],
+        perception=["garment"],
         denoise_override=0.62,
         fallback_workflow_ref=_IMG2IMG,
         post_balanced=["color_match", "face_detailer"],

@@ -39,6 +39,34 @@ def segment_boxes(
             warnings=warnings,
         )
 
+    # Clothing-ish labels → CLIPSeg / local fabric (better than box raster).
+    labels = " ".join(b.label or "" for b in boxes).lower()
+    if any(
+        k in labels
+        for k in ("shirt", "cloth", "top", "dress", "blouse", "bust", "chest", "outfit")
+    ):
+        try:
+            from backend.ai_engine.perception import garment_mask as gm
+
+            art = gm.detect_garment_mask(image_bytes, settings=settings)
+            warnings.extend(art.warnings)
+            if grow_px:
+                art.mask_png = dilate_mask_png(art.mask_png, grow_px)
+            labels_out = [b.label for b in boxes if b.label] or art.labels
+            return MaskResult(
+                mask_png=art.mask_png,
+                width=art.width,
+                height=art.height,
+                source=art.source,
+                labels=labels_out,
+                boxes=boxes,
+                warnings=warnings,
+                meta=dict(art.meta),
+            )
+        except Exception as exc:
+            log.warning("garment segment path failed: %s", exc)
+            warnings.append(f"garment_segment_failed:{exc}")
+
     if sam_available():
         try:
             return _segment_via_comfy(image_bytes, boxes, settings=settings)

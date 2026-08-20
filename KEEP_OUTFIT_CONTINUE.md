@@ -17,11 +17,11 @@ Do **not** edit `.cursor/plans/keep-outfit_edit_quality_6312ed4d.plan.md`.
 
 ## Not done (resume here)
 
-1. **Eval the same two start photos** (plan scoring: same face/hair/bg, same garment type/color, photoreal volume, no rectangle/two-tone smear). Prior outputs live locally under `tmp_test/maxref_run/` (`out_r3_*` was the least-broken pair). Inputs were tester library photos / `tmp_test/first_preset_run/` on the GPU PC — those PNGs are gitignored.
-2. **If seams remain:** SAM2 mask, then optional 4x-UltraSharp on the torso crop only. Do not add IP-Adapter, new Wan, or Flux Fill for this action.
-3. **Overlay sync:** `python scripts/sync_runtime_overlay.py` so Render `/etc/secrets` matches local `private/planner_rules.py` and `private/edit_runner.py`.
-4. **Confirm production path:** Vercel UI → Render API → Cloudflare tunnel → this GPU’s Comfy (`8188`). Hidden watchdog: `scripts/wan_stack_watchdog.py` + `scripts/start_wan_stack_hidden.vbs`.
-5. **Freeze** LoRA/denoise/mask numbers only after three fixtures pass the score list above.
+1. **Eval the same two start photos** after garment-mask wiring (CLIPSeg / local fabric ∩ bust core; soft seam restore). Score: same face/hair/bg, same garment type/color, photoreal volume, no rectangle/two-tone smear.
+2. **SAM weight installed** on this GPU PC: `models/sams/sam_vit_b_01ec64.pth` (Impact `SAMLoader`). CLIPSeg nodes are used for cloth text masks; SAM is available for further refine if needed.
+3. **Overlay sync:** `python scripts/sync_runtime_overlay.py` after `private/planner_rules.py` / `private/edit_runner.py` changes.
+4. **Confirm production path:** Vercel → Render → Cloudflare tunnel → Comfy `:8188`.
+5. **Freeze** LoRA/denoise/mask numbers only after three fixtures pass.
 
 ## Key files
 
@@ -29,7 +29,7 @@ Do **not** edit `.cursor/plans/keep-outfit_edit_quality_6312ed4d.plan.md`.
 |--------|------|
 | Workflow | `backend/ai_engine/workflows/edit_suite/v1.py` |
 | Planner fallback | `backend/ai_engine/planner/__init__.py` |
-| Mask / post | `backend/ai_engine/post/face_lock.py`, `pipeline.py` |
+| Mask / post | `backend/ai_engine/post/face_lock.py`, `pipeline.py`, `perception/garment_mask.py` |
 | Graph + PuLID | `backend/workflows_wan.py`, `backend/comfy_client.py` |
 | Overlay (gitignored) | `private/planner_rules.py`, `private/edit_runner.py` |
 | Overlay upload | `scripts/sync_runtime_overlay.py` |
