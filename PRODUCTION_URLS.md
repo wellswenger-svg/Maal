@@ -84,15 +84,22 @@ Your GPU **must stay on this machine**. Remote Controls cannot invent a GPU on a
 | Tunnel URL changed | Watchdog auto-updates Render `COMFYUI_URL` |
 | This PC slept / powered off | Nothing remote can help until it wakes — disable sleep while away |
 
-On the **GPU PC**, keep the watchdog running (or install at login):
+On the **GPU PC**, install once so the stack starts **hidden at every login**:
 
 ```powershell
-python scripts/wan_stack_watchdog.py
-# or once:
-powershell -ExecutionPolicy Bypass -File scripts/install_wan_watchdog_task.ps1
+powershell -ExecutionPolicy Bypass -File scripts/install_mobile_autostart.ps1
 ```
 
-That keeps Comfy + Cloudflare tunnels + gpu_agent alive, and pushes new tunnel URLs to Render so phone Controls keep working.
+That keeps Comfy + Cloudflare tunnels + gpu_agent alive in the background, and pushes new tunnel URLs to Render so phone / other-PC gens keep working.
+
+```powershell
+# status only
+powershell -ExecutionPolicy Bypass -File scripts/install_mobile_autostart.ps1 -Status
+# remove login shortcut
+powershell -ExecutionPolicy Bypass -File scripts/install_mobile_autostart.ps1 -Uninstall
+```
+
+Logs: `tmp_test/watchdog.log`. Leave this PC on (disable sleep).
 
 ## Removed / do not use
 

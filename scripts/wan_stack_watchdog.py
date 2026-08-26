@@ -8,6 +8,8 @@ Run ON the GPU PC (leave it on / awake). This watchdog:
    Render ``COMFYUI_URL`` automatically
 3. Ensures ``gpu_agent`` on :8799 (Restart GPU from Controls / phone)
 4. Ensures a second tunnel for the agent; updates Render ``GPU_AGENT_URL``
+5. Ensures Prowler Control (UI+API) on :8010 + a third Cloudflare tunnel
+   (URL saved as ``prowler_url`` in tokens&cmd)
 
 Requires gitignored ``tokens&cmd`` with at least ``render=<api key>``.
 Optional keys (auto-filled on first run if missing):
@@ -39,6 +41,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 TOKENS = REPO / "tokens&cmd"
 COMFY_ROOT = Path(r"E:\Comfy-Desktop\ComfyUI-Installs\Khelukhiladi\ComfyUI")
+PROWLER_ROOT = Path(r"D:\prowler")
+PROWLER_API = PROWLER_ROOT / "apps" / "api"
+PROWLER_PYTHON = PROWLER_API / ".venv" / "Scripts" / "python.exe"
 CLOUDFLARED = Path(r"C:\Program Files (x86)\cloudflared\cloudflared.exe")
 RENDER_API = "https://api.render.com/v1"
 SERVICE_ID = "srv-d9ot8spt0dsc73bqjv0g"
@@ -143,7 +148,8 @@ def ensure_comfy(tokens: dict[str, str]) -> None:
         shell=True,
         cwd=str(COMFY_ROOT if COMFY_ROOT.is_dir() else REPO),
         env=env,
-        creationflags=_new_console_flags(),
+        # Hidden — phone stack must not depend on a visible Comfy console.
+        creationflags=_no_window_flags() or _new_console_flags(),
     )
     for _ in range(60):
         time.sleep(2)
@@ -248,6 +254,17 @@ def _dedupe_cloudflared(target_port: int) -> int | None:
     _kill_cloudflared_for(target_port, keep_pid=keep)
     log(f"deduped cloudflared :{target_port} — kept pid {keep}, removed {len(pids) - 1}")
     return keep
+
+
+def tunnel_probe_url(local_port: int, base: str) -> str:
+    base = base.rstrip("/")
+    if local_port == 8188:
+        return f"{base}/system_stats"
+    if local_port == 8799:
+        return f"{base}/status"
+    if local_port == 8010:
+        return f"{base}/api/health"
+    return base
 
 
 def start_quick_tunnel(local_port: int, log_path: Path) -> subprocess.Popen:
@@ -410,7 +427,7 @@ def ensure_tunnel(
         return
 
     # Stale quick-tunnel hostname (common after PC sleep / cloudflared restart)
-    if known and not http_ok(f"{known}/system_stats" if local_port == 8188 else f"{known}/status", timeout=12):
+    if known and not http_ok(tunnel_probe_url(local_port, known), timeout=12):
         log(f"stale tunnel URL for :{local_port} ({known}) — recycling")
         known = ""
         _kill_cloudflared_for(local_port)
@@ -452,7 +469,10 @@ def ensure_tunnel(
             state_path.write_text(known + "\n", encoding="utf-8")
 
     render_tok = (tokens.get("render") or "").strip()
-    if not render_tok or not known:
+    if not render_tok or not known or not (render_env_key or "").strip():
+        if local_port == 8010 and known:
+            upsert_token("prowler_url", known)
+            tokens["prowler_url"] = known
         return
     # Push to Render when API still points at a dead/different hostname
     if local_port == 8188 and api_url == known and api_comfy_ok:
@@ -465,6 +485,9 @@ def ensure_tunnel(
         if render_env_key == "GPU_AGENT_URL":
             upsert_token("gpu_agent", known)
             tokens["gpu_agent"] = known
+        if local_port == 8010:
+            upsert_token("prowler_url", known)
+            tokens["prowler_url"] = known
     except Exception as exc:
         log(f"Render update failed ({render_env_key}): {exc}")
 
@@ -495,6 +518,37 @@ def ensure_gpu_agent(tokens: dict[str, str]) -> None:
     log("WARNING: gpu_agent did not become healthy")
 
 
+def ensure_prowler(_tokens: dict[str, str]) -> None:
+    """Keep Prowler Control (FastAPI + built UI) listening on :8010."""
+    if http_ok("http://127.0.0.1:8010/api/health"):
+        return
+    if not PROWLER_API.is_dir():
+        log(f"WARNING: Prowler API dir missing ({PROWLER_API}) — skip")
+        return
+    py = PROWLER_PYTHON if PROWLER_PYTHON.is_file() else Path(sys.executable)
+    log("Prowler down — starting…")
+    subprocess.Popen(
+        [
+            str(py),
+            "-m",
+            "uvicorn",
+            "app.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8010",
+        ],
+        cwd=str(PROWLER_API),
+        creationflags=_no_window_flags(),
+    )
+    for _ in range(30):
+        time.sleep(1)
+        if http_ok("http://127.0.0.1:8010/api/health"):
+            log("Prowler is up")
+            return
+    log("WARNING: Prowler did not become healthy in time")
+
+
 def heal_once(tokens: dict[str, str], procs: dict[str, subprocess.Popen]) -> None:
     ensure_comfy(tokens)
     ensure_tunnel(
@@ -512,13 +566,58 @@ def heal_once(tokens: dict[str, str], procs: dict[str, subprocess.Popen]) -> Non
         tokens=tokens,
         procs=procs,
     )
+    ensure_prowler(tokens)
+    ensure_tunnel(
+        local_port=8010,
+        state_key="prowler_tunnel",
+        render_env_key="",  # local/mobile only — URL stored as prowler_url
+        tokens=tokens,
+        procs=procs,
+    )
+
+
+def _watchdog_already_running() -> bool:
+    """True if another wan_stack_watchdog.py heal loop is alive (this PID excluded)."""
+    if sys.platform != "win32":
+        return False
+    me = os.getpid()
+    ps = (
+        "Get-CimInstance Win32_Process -Filter \"Name='python.exe' OR Name='pythonw.exe'\" "
+        "| ForEach-Object { '{0}|{1}' -f $_.ProcessId, $_.CommandLine }"
+    )
+    try:
+        out = subprocess.check_output(
+            ["powershell", "-NoProfile", "-Command", ps],
+            text=True,
+            errors="replace",
+            creationflags=_no_window_flags(),
+        )
+    except Exception:
+        return False
+    needle = "wan_stack_watchdog.py"
+    for line in out.splitlines():
+        if "|" not in line or needle not in line:
+            continue
+        raw_pid = line.split("|", 1)[0].strip()
+        if raw_pid.isdigit() and int(raw_pid) != me:
+            return True
+    return False
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--interval", type=int, default=45)
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="Start even if another watchdog instance is already running",
+    )
     args = ap.parse_args()
+
+    if not args.once and not args.force and _watchdog_already_running():
+        log("another watchdog already running — exit (use --force to override)")
+        return 0
 
     tokens = ensure_secrets(load_tokens())
     if not (tokens.get("render") or "").strip():
