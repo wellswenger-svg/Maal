@@ -112,30 +112,90 @@ def keep_outfit_edit_mask_png(
     settings: Any = None,
     garment: Optional[MaskResult] = None,
     prefer_comfy: bool = True,
+    region: str = "bust",
 ) -> tuple[bytes, dict[str, Any]]:
     """
     White RGB PNG = sampler noise_mask for keep-outfit reshape.
 
-    Bust geometry ∩ garment detection. Soft edges. Coverage ~12–20%.
+    region:
+      - bust: chest core ∩ garment (default)
+      - hip: lower-torso / hip core ∩ garment
+      - curves: max(bust, hip) cores ∩ garment
+
+    Soft edges. Coverage ~12–20% (hip/curves up to ~22%).
     """
     from backend.ai_engine.post.face_lock import (
         _clip_to_bust_bounds,
+        _clip_to_hip_bounds,
         _ensure_edit_coverage,
         _portrait_prior,
         chest_keep_mask,
         detect_face_box,
+        hip_keep_mask,
     )
+
+    region_key = (region or "bust").strip().lower()
+    if region_key in ("ass", "butt", "hips", "glute", "glutes", "thighs"):
+        region_key = "hip"
+    if region_key not in ("bust", "hip", "curves"):
+        region_key = "bust"
 
     img = load_rgb(image_bytes)
     face = detect_face_box(img) or _portrait_prior(img.size)
-    core = chest_keep_mask(img.size, face)
     grow = max(5, int(min(img.size) * 0.012))
     if grow % 2 == 0:
         grow += 1
-    core = core.filter(ImageFilter.MaxFilter(size=grow))
-    core = _clip_to_bust_bounds(core, img.size, face)
 
-    meta: dict[str, Any] = {"face": list(face)}
+    if region_key == "hip":
+        core = hip_keep_mask(img.size, face)
+        core = core.filter(ImageFilter.MaxFilter(size=grow))
+        core = _clip_to_hip_bounds(core, img.size, face)
+        clip_fn = _clip_to_hip_bounds
+        cov_hi = 0.22
+    elif region_key == "curves":
+        from PIL import ImageChops
+
+        bust = chest_keep_mask(img.size, face).filter(ImageFilter.MaxFilter(size=grow))
+        bust = _clip_to_bust_bounds(bust, img.size, face)
+        hip = hip_keep_mask(img.size, face).filter(ImageFilter.MaxFilter(size=grow))
+        hip = _clip_to_hip_bounds(hip, img.size, face)
+        if np is not None:
+            core = Image.fromarray(
+                np.maximum(np.array(bust, dtype=np.uint8), np.array(hip, dtype=np.uint8)),
+                mode="L",
+            )
+        else:
+            core = ImageChops.lighter(bust, hip)
+
+        def clip_fn(mask, size, face_box):  # type: ignore[no-redef]
+            # Allow both bands; still zero face / extreme edges.
+            w, h = size
+            arr = np.array(mask, dtype=np.uint8, copy=True) if np is not None else None
+            x_lo, x_hi = int(w * 0.12), int(w * 0.88)
+            y_lo = int(h * 0.28)
+            y_hi = int(h * 0.96)
+            if arr is None:
+                px = mask.load()
+                for yy in range(h):
+                    for xx in range(w):
+                        if xx < x_lo or xx > x_hi or yy < y_lo or yy > y_hi:
+                            px[xx, yy] = 0
+                return mask
+            arr[:, :x_lo] = 0
+            arr[:, x_hi:] = 0
+            arr[:y_lo, :] = 0
+            arr[y_hi:, :] = 0
+            return Image.fromarray(arr, mode="L")
+
+        cov_hi = 0.24
+    else:
+        core = chest_keep_mask(img.size, face)
+        core = core.filter(ImageFilter.MaxFilter(size=grow))
+        core = _clip_to_bust_bounds(core, img.size, face)
+        clip_fn = _clip_to_bust_bounds
+        cov_hi = 0.20
+
+    meta: dict[str, Any] = {"face": list(face), "region": region_key}
     if garment is None:
         garment = detect_garment_mask(
             image_bytes, settings=settings, prefer_comfy=prefer_comfy
@@ -165,11 +225,11 @@ def keep_outfit_edit_mask_png(
         out = Image.composite(core, Image.new("L", img.size, 0), gate)
         meta["garment_intersect"] = True
 
-    out = _clip_to_bust_bounds(out, img.size, face)
-    out = _ensure_edit_coverage(out, img.size, face, lo=0.12, hi=0.20)
+    out = clip_fn(out, img.size, face)
+    out = _ensure_edit_coverage(out, img.size, face, lo=0.12, hi=cov_hi, clip=clip_fn)
     soft = max(3, int(min(img.size) * 0.008))
     out = out.filter(ImageFilter.GaussianBlur(radius=soft))
-    out = _ensure_edit_coverage(out, img.size, face, lo=0.12, hi=0.20)
+    out = _ensure_edit_coverage(out, img.size, face, lo=0.12, hi=cov_hi, clip=clip_fn)
     meta["coverage"] = _coverage(out)
 
     rgb = Image.merge("RGB", (out, out, out))

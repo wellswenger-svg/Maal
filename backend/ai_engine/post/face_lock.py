@@ -50,7 +50,10 @@ def bust_inpaint_mask_png(
         from backend.ai_engine.perception.garment_mask import keep_outfit_edit_mask_png
 
         mask_png, _meta = keep_outfit_edit_mask_png(
-            image_bytes, settings=settings, prefer_comfy=prefer_comfy
+            image_bytes,
+            settings=settings,
+            prefer_comfy=prefer_comfy,
+            region="bust",
         )
         return mask_png
     except Exception:
@@ -71,6 +74,43 @@ def bust_inpaint_mask_png(
     rgb.save(buf, format="PNG")
     return buf.getvalue()
 
+
+def hip_inpaint_mask_png(
+    image_bytes: bytes,
+    *,
+    settings=None,
+    prefer_comfy: bool = True,
+) -> bytes:
+    """White PNG mask for lower-body reshape (hips) — Flux img2img noise_mask."""
+    try:
+        from backend.ai_engine.perception.garment_mask import keep_outfit_edit_mask_png
+
+        mask_png, _meta = keep_outfit_edit_mask_png(
+            image_bytes,
+            settings=settings,
+            prefer_comfy=prefer_comfy,
+            region="hip",
+        )
+        return mask_png
+    except Exception:
+        pass
+    orig = Image.open(BytesIO(image_bytes)).convert("RGB")
+    face = detect_face_box(orig) or _portrait_prior(orig.size)
+    mask = hip_keep_mask(orig.size, face)
+    grow = max(5, int(min(orig.size) * 0.012))
+    if grow % 2 == 0:
+        grow += 1
+    mask = mask.filter(ImageFilter.MaxFilter(size=grow))
+    mask = _clip_to_hip_bounds(mask, orig.size, face)
+    mask = _ensure_edit_coverage(
+        mask, orig.size, face, lo=0.12, hi=0.22, clip=_clip_to_hip_bounds
+    )
+    soft = max(3, int(min(orig.size) * 0.008))
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=soft))
+    rgb = Image.merge("RGB", (mask, mask, mask))
+    buf = BytesIO()
+    rgb.save(buf, format="PNG")
+    return buf.getvalue()
 
 def restore_outside_chest(
     original_bytes: bytes,
@@ -169,6 +209,59 @@ def _clip_to_bust_bounds(
     return Image.fromarray(arr, mode="L")
 
 
+def _clip_to_hip_bounds(
+    mask: Image.Image,
+    size: tuple[int, int],
+    face_box: tuple[int, int, int, int],
+) -> Image.Image:
+    """Keep only the lower torso / hip band; zero face, chest, and feet edge."""
+    w, h = size
+    fx, fy, fw, fh = face_box
+    # Start below mid-torso so chest reshape LoRAs do not fight hip edits.
+    y_lo = int(min(max(fy + fh * 1.55, h * 0.48), h * 0.62))
+    y_hi = int(min(h * 0.96, max(y_lo + int(h * 0.22), h * 0.90)))
+    x_lo, x_hi = int(w * 0.12), int(w * 0.88)
+    arr = np.array(mask, dtype=np.uint8, copy=True) if np is not None else None
+    if arr is None:
+        px = mask.load()
+        for yy in range(h):
+            for xx in range(w):
+                if xx < x_lo or xx > x_hi or yy < y_lo or yy > y_hi:
+                    px[xx, yy] = 0
+        return mask
+    arr[:, :x_lo] = 0
+    arr[:, x_hi:] = 0
+    arr[:y_lo, :] = 0
+    arr[y_hi:, :] = 0
+    return Image.fromarray(arr, mode="L")
+
+
+def hip_keep_mask(
+    size: tuple[int, int],
+    face_box: tuple[int, int, int, int] | None,
+) -> Image.Image:
+    """Soft elliptical prior over hips / seat (portrait or 3/4 crop)."""
+    w, h = size
+    if face_box is None:
+        fx, fy, fw, fh = _portrait_prior(size)
+    else:
+        fx, fy, fw, fh = face_box
+    mid = min(max(fx + fw / 2.0, w * 0.35), w * 0.65)
+    cy = min(max(fy + fh * 2.05, h * 0.62), h * 0.78)
+    rx = min(w * 0.28, max(w * 0.18, fw * 0.55))
+    ry = min(h * 0.18, max(h * 0.12, fh * 0.55))
+    mask = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse([mid - rx, cy - ry, mid + rx, cy + ry], fill=255)
+    # Slightly wider lower lobe for seat / upper thigh.
+    draw.ellipse(
+        [mid - rx * 1.05, cy + ry * 0.15, mid + rx * 1.05, cy + ry * 1.35],
+        fill=255,
+    )
+    radius = max(2, int(min(w, h) * 0.008))
+    return mask.filter(ImageFilter.GaussianBlur(radius=radius))
+
+
 def _mask_coverage(mask: Image.Image) -> float:
     if np is None:
         hist = mask.histogram()
@@ -185,24 +278,25 @@ def _ensure_edit_coverage(
     *,
     lo: float = 0.12,
     hi: float = 0.20,
+    clip=None,
 ) -> Image.Image:
-    """Grow or shrink the sampler mask into the 12–20% coverage band."""
+    """Grow or shrink the sampler mask into the coverage band."""
+    clip_fn = clip or _clip_to_bust_bounds
     cur = mask
     cov = _mask_coverage(cur)
     odd = 5
     while cov < lo and odd <= 41:
         cur = cur.filter(ImageFilter.MaxFilter(size=odd))
-        cur = _clip_to_bust_bounds(cur, size, face_box)
+        cur = clip_fn(cur, size, face_box)
         cov = _mask_coverage(cur)
         odd += 4
     odd = 3
     while cov > hi and odd <= 21:
         cur = cur.filter(ImageFilter.MinFilter(size=odd))
-        cur = _clip_to_bust_bounds(cur, size, face_box)
+        cur = clip_fn(cur, size, face_box)
         cov = _mask_coverage(cur)
         odd += 2
     return cur
-
 
 def _bust_lobes(
     size: tuple[int, int],

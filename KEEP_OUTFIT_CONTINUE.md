@@ -212,10 +212,12 @@ Full tables/checklist: [`KEEP_OUTFIT_LORA_TRAIN.md`](KEEP_OUTFIT_LORA_TRAIN.md).
 | PuLID | `pulid_flux_v0.9.1.safetensors` (Pass A ~denoise 0.40, no reshape LoRA) |
 | Pass B | masked reshape denoise **0.55–0.70** |
 | Pass C | paste face/straps from **start** |
-| Current reshape weight | `Huge_natural_breasts_for_FLUX_v2.safetensors` (`breast_enhance`) until custom LoRA ships |
+| Current reshape weight (front) | `Huge_natural_breasts_for_FLUX_v2.safetensors` (`breast_enhance`) until custom keep-outfit LoRA ships |
+| Current reshape weight (back) | `FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors` (`ass_enhance` / `hip_enhance`) |
+| Mask region | `bust` / `hip` / `curves` via `keep_outfit_edit_mask_png(region=…)` |
 | Wrap | `fabric` |
 | Planner denoise hint | **0.62** |
-| Overlay LoRA strength | **0.72** |
+| Overlay LoRA strength | bust **0.72**, hip **0.70** |
 
 Production: frontend `https://frontend-six-chi-37.vercel.app`, API `https://wan-studio-api.onrender.com`, repo `https://github.com/wellswenger-svg/Maal` `main`.
 

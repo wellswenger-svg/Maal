@@ -10,6 +10,8 @@ Run ON the GPU PC (leave it on / awake). This watchdog:
 4. Ensures a second tunnel for the agent; updates Render ``GPU_AGENT_URL``
 5. Ensures Prowler Control (UI+API) on :8010 + a third Cloudflare tunnel
    (URL saved as ``prowler_url`` in tokens&cmd)
+6. Ensures Scapper dashboard on :8000 + a fourth Cloudflare tunnel
+   (URL saved as ``scapper_url`` in tokens&cmd))
 
 Requires gitignored ``tokens&cmd`` with at least ``render=<api key>``.
 Optional keys (auto-filled on first run if missing):
@@ -44,10 +46,16 @@ COMFY_ROOT = Path(r"E:\Comfy-Desktop\ComfyUI-Installs\Khelukhiladi\ComfyUI")
 PROWLER_ROOT = Path(r"D:\prowler")
 PROWLER_API = PROWLER_ROOT / "apps" / "api"
 PROWLER_PYTHON = PROWLER_API / ".venv" / "Scripts" / "python.exe"
+SCAPPER_ROOT = Path(r"D:\Scapper")
+SCAPPER_PYTHON = SCAPPER_ROOT / ".venv" / "Scripts" / "python.exe"
+SCAPPER_TOKENS = SCAPPER_ROOT / "tokens&cmd"
+NAMED_TUNNEL_CONFIG = SCAPPER_ROOT / "deploy" / "tunnel" / "config.yml"
 CLOUDFLARED = Path(r"C:\Program Files (x86)\cloudflared\cloudflared.exe")
 RENDER_API = "https://api.render.com/v1"
 SERVICE_ID = "srv-d9ot8spt0dsc73bqjv0g"
 URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com", re.I)
+# Back off creating new quick tunnels after Cloudflare 429s
+_QUICK_TUNNEL_COOLDOWN_UNTIL = 0.0
 
 DEFAULT_COMFY_CMD = (
     f'set TQDM_DISABLE=1&& "{COMFY_ROOT / ".venv" / "Scripts" / "python.exe"}" '
@@ -72,11 +80,11 @@ def load_tokens() -> dict[str, str]:
     return out
 
 
-def upsert_token(key: str, value: str) -> None:
+def _upsert_token_file(path: Path, key: str, value: str) -> None:
     lines: list[str] = []
     found = False
-    if TOKENS.is_file():
-        for line in TOKENS.read_text(encoding="utf-8", errors="replace").splitlines():
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             if line.strip().startswith(f"{key}="):
                 lines.append(f"{key}={value}")
                 found = True
@@ -86,7 +94,18 @@ def upsert_token(key: str, value: str) -> None:
         if lines and lines[-1].strip():
             lines.append("")
         lines.append(f"{key}={value}")
-    TOKENS.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def upsert_token(key: str, value: str) -> None:
+    _upsert_token_file(TOKENS, key, value)
+    # Keep Scapper's gitignored tokens file in sync for scapper_url (and shared keys).
+    if key == "scapper_url" and SCAPPER_TOKENS != TOKENS:
+        try:
+            _upsert_token_file(SCAPPER_TOKENS, key, value)
+        except OSError as exc:
+            log(f"could not sync {key} to Scapper tokens&cmd: {exc}")
 
 
 def ensure_secrets(tokens: dict[str, str]) -> dict[str, str]:
@@ -264,10 +283,18 @@ def tunnel_probe_url(local_port: int, base: str) -> str:
         return f"{base}/status"
     if local_port == 8010:
         return f"{base}/api/health"
+    if local_port == 8000:
+        return f"{base}/health"
     return base
 
 
 def start_quick_tunnel(local_port: int, log_path: Path) -> subprocess.Popen:
+    global _QUICK_TUNNEL_COOLDOWN_UNTIL
+    if time.time() < _QUICK_TUNNEL_COOLDOWN_UNTIL:
+        raise RuntimeError(
+            f"quick-tunnel cooldown active until {_QUICK_TUNNEL_COOLDOWN_UNTIL:.0f} "
+            f"(Cloudflare rate limit) — not creating :{local_port}"
+        )
     if not CLOUDFLARED.is_file():
         raise SystemExit(f"cloudflared not found at {CLOUDFLARED}")
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -288,6 +315,7 @@ def start_quick_tunnel(local_port: int, log_path: Path) -> subprocess.Popen:
 
 
 def wait_tunnel_url(log_path: Path, timeout: float = 45.0) -> str | None:
+    global _QUICK_TUNNEL_COOLDOWN_UNTIL
     deadline = time.time() + timeout
     while time.time() < deadline:
         if log_path.is_file():
@@ -295,11 +323,121 @@ def wait_tunnel_url(log_path: Path, timeout: float = 45.0) -> str | None:
                 text = log_path.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 text = ""
+            if "429" in text or "1015" in text or "Too Many Requests" in text:
+                _QUICK_TUNNEL_COOLDOWN_UNTIL = time.time() + 30 * 60
+                log("Cloudflare quick-tunnel rate limit — cooldown 30m")
+                return None
             m = URL_RE.findall(text)
             if m:
                 return m[-1].rstrip("/")
         time.sleep(1)
     return None
+
+
+def named_tunnel_mode(tokens: dict[str, str]) -> bool:
+    flag = (tokens.get("named_tunnel") or "").strip().lower()
+    return flag in {"1", "true", "yes", "on"} and NAMED_TUNNEL_CONFIG.is_file()
+
+
+def _cloudflared_pids_named() -> list[int]:
+    """PIDs of cloudflared running our named-tunnel config.yml."""
+    if sys.platform != "win32":
+        return []
+    needle = str(NAMED_TUNNEL_CONFIG).replace("/", "\\").lower()
+    needle2 = "deploy\\tunnel\\config.yml"
+    ps = (
+        "Get-CimInstance Win32_Process -Filter \"Name='cloudflared.exe'\" "
+        "| ForEach-Object { '{0}|{1}' -f $_.ProcessId, $_.CommandLine }"
+    )
+    try:
+        out = subprocess.check_output(
+            ["powershell", "-NoProfile", "-Command", ps],
+            text=True,
+            errors="replace",
+            creationflags=_no_window_flags(),
+        )
+    except Exception:
+        return []
+    pids: list[int] = []
+    for line in out.splitlines():
+        if "|" not in line:
+            continue
+        raw_pid, cmd = line.split("|", 1)
+        cl = cmd.lower().replace("/", "\\")
+        if raw_pid.isdigit() and (needle in cl or needle2 in cl):
+            pids.append(int(raw_pid))
+    return pids
+
+
+def ensure_named_tunnel(tokens: dict[str, str], procs: dict[str, subprocess.Popen]) -> None:
+    """One cloudflared process; hostnames in config.yml map to :8000/:8010/:8188/:8799."""
+    scapper_u = (tokens.get("scapper_url") or "").rstrip("/")
+    prowler_u = (tokens.get("prowler_url") or "").rstrip("/")
+    comfy_u = (tokens.get("gpu_comfy_url") or tokens.get("COMFYUI_URL") or "").rstrip("/")
+    # If stable public URLs already healthy, keep the named process only.
+    healthy = True
+    if scapper_u and not http_ok(f"{scapper_u}/health", timeout=12):
+        healthy = False
+    if prowler_u and not http_ok(f"{prowler_u}/api/auth/status", timeout=12):
+        healthy = False
+    if comfy_u and not http_ok(f"{comfy_u}/system_stats", timeout=12):
+        healthy = False
+
+    pids = _cloudflared_pids_named()
+    proc = procs.get("named_tunnel")
+    alive = proc is not None and proc.poll() is None
+    if (alive or pids) and healthy:
+        _dedupe_named(keep=min(pids) if pids else None)
+        return
+
+    if not CLOUDFLARED.is_file():
+        log(f"WARNING: cloudflared missing at {CLOUDFLARED}")
+        return
+    if not NAMED_TUNNEL_CONFIG.is_file():
+        log(f"WARNING: named tunnel config missing ({NAMED_TUNNEL_CONFIG})")
+        return
+
+    # Kill duplicate named runners, then start one
+    for pid in pids:
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/F"],
+            check=False,
+            capture_output=True,
+            creationflags=_no_window_flags(),
+        )
+    log_path = REPO / "tmp_test" / "named_tunnel.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_f = open(log_path, "ab", buffering=0)
+    procs["named_tunnel"] = subprocess.Popen(
+        [str(CLOUDFLARED), "tunnel", "--config", str(NAMED_TUNNEL_CONFIG), "run"],
+        stdout=log_f,
+        stderr=subprocess.STDOUT,
+        creationflags=_no_window_flags(),
+    )
+    log(f"started named tunnel (pid {procs['named_tunnel'].pid})")
+    # Give DNS/edge a moment
+    for _ in range(20):
+        time.sleep(2)
+        if scapper_u and http_ok(f"{scapper_u}/health", timeout=8):
+            log(f"named tunnel healthy — {scapper_u}")
+            return
+    log("WARNING: named tunnel started but hostnames not healthy yet (DNS/propagation?)")
+
+
+def _dedupe_named(*, keep: int | None) -> None:
+    pids = _cloudflared_pids_named()
+    if len(pids) <= 1:
+        return
+    keep_pid = keep if keep is not None else min(pids)
+    for pid in pids:
+        if pid == keep_pid:
+            continue
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/F"],
+            check=False,
+            capture_output=True,
+            creationflags=_no_window_flags(),
+        )
 
 
 def render_headers(token: str) -> dict[str, str]:
@@ -473,6 +611,9 @@ def ensure_tunnel(
         if local_port == 8010 and known:
             upsert_token("prowler_url", known)
             tokens["prowler_url"] = known
+        if local_port == 8000 and known:
+            upsert_token("scapper_url", known)
+            tokens["scapper_url"] = known
         return
     # Push to Render when API still points at a dead/different hostname
     if local_port == 8188 and api_url == known and api_comfy_ok:
@@ -488,6 +629,9 @@ def ensure_tunnel(
         if local_port == 8010:
             upsert_token("prowler_url", known)
             tokens["prowler_url"] = known
+        if local_port == 8000:
+            upsert_token("scapper_url", known)
+            tokens["scapper_url"] = known
     except Exception as exc:
         log(f"Render update failed ({render_env_key}): {exc}")
 
@@ -518,15 +662,22 @@ def ensure_gpu_agent(tokens: dict[str, str]) -> None:
     log("WARNING: gpu_agent did not become healthy")
 
 
-def ensure_prowler(_tokens: dict[str, str]) -> None:
+def ensure_prowler(tokens: dict[str, str]) -> None:
     """Keep Prowler Control (FastAPI + built UI) listening on :8010."""
-    if http_ok("http://127.0.0.1:8010/api/health"):
+    if http_ok("http://127.0.0.1:8010/api/auth/status"):
         return
     if not PROWLER_API.is_dir():
         log(f"WARNING: Prowler API dir missing ({PROWLER_API}) — skip")
         return
     py = PROWLER_PYTHON if PROWLER_PYTHON.is_file() else Path(sys.executable)
     log("Prowler down — starting…")
+    env = os.environ.copy()
+    pin = (tokens.get("prowler_pin") or tokens.get("PROWLER_PIN") or "").strip()
+    if pin:
+        env["PROWLER_PIN"] = pin
+    secret = (tokens.get("prowler_auth_secret") or tokens.get("PROWLER_AUTH_SECRET") or "").strip()
+    if secret:
+        env["PROWLER_AUTH_SECRET"] = secret
     subprocess.Popen(
         [
             str(py),
@@ -539,18 +690,110 @@ def ensure_prowler(_tokens: dict[str, str]) -> None:
             "8010",
         ],
         cwd=str(PROWLER_API),
+        env=env,
         creationflags=_no_window_flags(),
     )
     for _ in range(30):
         time.sleep(1)
-        if http_ok("http://127.0.0.1:8010/api/health"):
+        if http_ok("http://127.0.0.1:8010/api/auth/status"):
             log("Prowler is up")
             return
     log("WARNING: Prowler did not become healthy in time")
 
 
+def ensure_scapper(tokens: dict[str, str]) -> None:
+    """Keep Scapper dashboard (FastAPI) listening on :8000 — GPU stays on this PC."""
+    if http_ok("http://127.0.0.1:8000/health"):
+        return
+    if not SCAPPER_ROOT.is_dir():
+        log(f"WARNING: Scapper dir missing ({SCAPPER_ROOT}) — skip")
+        return
+    py = SCAPPER_PYTHON if SCAPPER_PYTHON.is_file() else Path(sys.executable)
+    log("Scapper down — starting…")
+    env = os.environ.copy()
+    # Prefer offline Hub once models are cached (faster restarts on tunnel heal).
+    env.setdefault("HF_HUB_OFFLINE", "1")
+    subprocess.Popen(
+        [
+            str(py),
+            "-m",
+            "uvicorn",
+            "src.api.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8000",
+        ],
+        cwd=str(SCAPPER_ROOT),
+        env=env,
+        creationflags=_no_window_flags(),
+    )
+    for _ in range(45):
+        time.sleep(2)
+        if http_ok("http://127.0.0.1:8000/health"):
+            log("Scapper is up")
+            return
+    log("WARNING: Scapper did not become healthy in time")
+
+
+def _push_scapper_to_render(tokens: dict[str, str]) -> None:
+    """Update scapper-gateway Render env SCAPPER_URL (stable public URL for users)."""
+    url = (tokens.get("scapper_url") or "").strip().rstrip("/")
+    service = (tokens.get("scapper_render_service") or "").strip()
+    render_tok = (tokens.get("render") or "").strip()
+    if not url or not service or not render_tok:
+        return
+    last = (tokens.get("scapper_url_pushed") or "").strip().rstrip("/")
+    if last == url:
+        return
+    # Reuse Wan env PUT helper against the Scapper service id
+    global SERVICE_ID
+    prev = SERVICE_ID
+    try:
+        SERVICE_ID = service
+        set_env_and_deploy(render_tok, {"SCAPPER_URL": url})
+        upsert_token("scapper_url_pushed", url)
+        tokens["scapper_url_pushed"] = url
+        log(f"Render scapper-gateway SCAPPER_URL -> {url}")
+    except Exception as exc:
+        log(f"Render scapper push failed: {exc}")
+    finally:
+        SERVICE_ID = prev
+
+
 def heal_once(tokens: dict[str, str], procs: dict[str, subprocess.Popen]) -> None:
     ensure_comfy(tokens)
+    ensure_gpu_agent(tokens)
+    ensure_prowler(tokens)
+    ensure_scapper(tokens)
+
+    if named_tunnel_mode(tokens):
+        # One cloudflared → hostnames for :8000 / :8010 / :8188 / :8799
+        ensure_named_tunnel(tokens, procs)
+        # Stable URLs already in tokens&cmd from setup_named_tunnel.ps1
+        _push_scapper_to_render(tokens)
+        # Keep Wan Render envs pointed at stable comfy/agent hostnames
+        render_tok = (tokens.get("render") or "").strip()
+        comfy_u = (tokens.get("gpu_comfy_url") or "").strip().rstrip("/")
+        agent_u = (tokens.get("gpu_agent") or "").strip().rstrip("/")
+        if render_tok and comfy_u:
+            try:
+                set_env_and_deploy(
+                    render_tok,
+                    {
+                        "COMFYUI_URL": comfy_u,
+                        **(
+                            {"GPU_AGENT_URL": agent_u, "GPU_AGENT_SECRET": tokens["gpu_agent_secret"]}
+                            if agent_u and tokens.get("gpu_agent_secret")
+                            else {}
+                        ),
+                    },
+                )
+            except Exception as exc:
+                log(f"Render COMFY/agent update failed: {exc}")
+        return
+
+    # Legacy: one quick tunnel per port (rate-limited if recreated too often)
     ensure_tunnel(
         local_port=8188,
         state_key="comfy_tunnel",
@@ -558,7 +801,6 @@ def heal_once(tokens: dict[str, str], procs: dict[str, subprocess.Popen]) -> Non
         tokens=tokens,
         procs=procs,
     )
-    ensure_gpu_agent(tokens)
     ensure_tunnel(
         local_port=8799,
         state_key="agent_tunnel",
@@ -566,14 +808,21 @@ def heal_once(tokens: dict[str, str], procs: dict[str, subprocess.Popen]) -> Non
         tokens=tokens,
         procs=procs,
     )
-    ensure_prowler(tokens)
     ensure_tunnel(
         local_port=8010,
         state_key="prowler_tunnel",
-        render_env_key="",  # local/mobile only — URL stored as prowler_url
+        render_env_key="",
         tokens=tokens,
         procs=procs,
     )
+    ensure_tunnel(
+        local_port=8000,
+        state_key="scapper_tunnel",
+        render_env_key="",
+        tokens=tokens,
+        procs=procs,
+    )
+    _push_scapper_to_render(tokens)
 
 
 def _watchdog_already_running() -> bool:
