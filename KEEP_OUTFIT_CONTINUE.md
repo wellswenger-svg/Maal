@@ -1,6 +1,6 @@
 # Keep-outfit reshape — continue on next PC
 
-Last machine: Windows (`d:\YtAuto\contrnt`), 2026-08-26.
+Last machine: Windows (`d:\YtAuto\contrnt`), 2026-09-01.
 
 Do **not** edit `.cursor/plans/keep-outfit_edit_quality_6312ed4d.plan.md`.
 
@@ -26,14 +26,91 @@ Paste-from-ref-gallery / rectangle torso patches are **wrong** and must not be t
 
 ---
 
+## LoRA strategy (Civitai vs PixAI — decide once)
+
+Front preset = `enhance_boobs` → `edit.keep_outfit_reshape` + `breast_enhance`.  
+Back preset = `enhance_ass` → same task + `ass_enhance`.
+
+| Option | Do it? | Why |
+|--------|--------|-----|
+| **Integrate PixAI** | **No** | Hosted gen API, not a Comfy LoRA. Breaks PuLID, garment masks, keep-outfit graph, identity lock. |
+| **Stack more Civitai bust LoRAs** | **No** | Competing concepts (volume vs cloth vs unlock) → worse drift. |
+| **Swap another Civitai bust LoRA into `breast_enhance`** | **Weak short-term only** | Still trained for “bigger,” not “same shirt + natural drape.” Slight bias change, same cloth fight. |
+| **Replace with your own keep-outfit LoRA** | **Yes — real fix** | Train on gold pairs → map `breast_enhance` (and later hips) to that `.safetensors`. |
+| **Civitai / HuggingFace as download source** | **Yes** | Already how `private/catalog_loras.py` pins URLs. Download files into Comfy `models/loras/` — do **not** call Civitai at runtime. |
+
+**Rule:** Civitai/HF = where weights come from. PixAI = wrong tool for this product path.  
+**Wire change:** **replace** the reshape weight for keep-outfit when a custom LoRA exists — do **not** integrate a second public bust LoRA on top.
+
+### Near term (no training yet)
+
+Tune pipeline, not the LoRA catalog:
+
+- Keep denoise **0.62–0.68** (cap band **0.55–0.70**)
+- Bust mask / garment intersect — if output ≈ start, restore is too aggressive or mask too small
+- Soften post-restore only after local Comfy holdout shows a real Pass B change
+- Prefer local Comfy eval before phone → Render
+
+### Medium term (ship quality)
+
+1. Fill `datasets/keep_outfit/gold/` (20+ pairs)
+2. Train Flux LoRA per [`KEEP_OUTFIT_LORA_TRAIN.md`](KEEP_OUTFIT_LORA_TRAIN.md)
+3. Wire `breast_enhance` → `keep_outfit_reshape_v1.safetensors` in `private/lora_files.py`
+4. Holdout `h01` / `h02` → then `python scripts/sync_runtime_overlay.py`
+
+---
+
+## Model wiring already set on this GPU PC (2026-09-01)
+
+Tracked repo has the workflow + planner fallback. **Product LoRA filenames live only in gitignored `private/`.**  
+After `git pull` on another PC you still need a copy of `private/` (USB / sync) — GitHub will not have it.
+
+| Logical id | Filename on Comfy shared `models/loras/` | Role | Strength (overlay) |
+|------------|------------------------------------------|------|--------------------|
+| `breast_enhance` / `bust_enhance` | `Huge_natural_breasts_for_FLUX_v2.safetensors` | Front volume (interim) | **0.72** in edit path |
+| `ass_enhance` / `hip_enhance` | `FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors` | Back / hips volume | **0.70** |
+| `nsfw_unlock` | `aidmaNSFWunlock-FLUX-V0.2.safetensors` | Unlock soft-refusal | ~0.95 clothed |
+| PuLID | `pulid_flux_v0.9.1.safetensors` (under `models/pulid/`) | Pass A identity | weight ~0.80–0.85 |
+
+Catalog pins (download sources) in `private/catalog_loras.py`:
+
+- Front: Civitai model `780114` → Huge Natural Breasts Flux v2  
+- Back: HuggingFace `75dhsx/Felldude` → LargeButt / SkinnyWaist FP8  
+- Unlock / wet / COF: see same file  
+
+Overlay files that must exist for keep-outfit to run:
+
+```text
+private/planner_rules.py   → clothed_body_enhance_pattern → edit.keep_outfit_reshape
+private/edit_runner.py     → Pass A PuLID + Pass B mask + LoRA stack + region lock
+private/lora_files.py      → logical id → filename + default strengths
+private/presets.json       → enhance_boobs / enhance_ass / enhance
+private/catalog_loras.py   → optional Model Manager download pins
+```
+
+Verify on the other PC after copy:
+
+```text
+python -c "from backend.ai_engine.runtime_overlay import overlay_status; print(overlay_status())"
+# expect edit_runner / planner_rules / presets all True
+
+python -c "from backend.ai_engine.models.catalog import _find_weight
+for f in ['Huge_natural_breasts_for_FLUX_v2.safetensors','FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors','aidmaNSFWunlock-FLUX-V0.2.safetensors','pulid_flux_v0.9.1.safetensors']:
+ print(f, '->', _find_weight(f))"
+```
+
+Comfy on this PC: `COMFYUI_DIR=E:\Comfy-Desktop\ComfyUI-Installs\Khelukhiladi\ComfyUI` with shared models under `E:\Comfy-Desktop\ComfyUI-Shared\models\`. Point the other PC’s `.env` `COMFYUI_URL` at this box’s tunnel / LAN if using remote resources.
+
+---
+
 ## What to copy to the next PC
 
 Git does **not** carry media or the overlay. Copy these manually (USB / sync):
 
 | Item | Path on this PC | Required? |
 |------|-----------------|-----------|
-| Repo | `d:\YtAuto\contrnt` (or `git pull` `main` on `wellswenger-svg/Maal`) | Yes |
-| Overlay | `private/` (especially `planner_rules.py`, `edit_runner.py`, `lora_files.py`) | Yes for keep-outfit product path |
+| Repo | `git pull` `main` on `wellswenger-svg/Maal` | Yes |
+| Overlay | `private/` (especially `planner_rules.py`, `edit_runner.py`, `lora_files.py`, `presets.json`, `catalog_loras.py`) | **Yes** — keep-outfit product path |
 | Train lab | **entire** `datasets/keep_outfit/` (PNGs are gitignored) | Yes if continuing train lab |
 | Secrets | `tokens&cmd`, `.env` / `.env.local` | Yes for deploy/API |
 | Optional eval | `tmp_test/first_preset_run/input_*.png` (also already in holdout) | Optional |
@@ -225,13 +302,16 @@ Production: frontend `https://frontend-six-chi-37.vercel.app`, API `https://wan-
 
 ## Resume checklist (next PC)
 
-1. [ ] Copy `private/` + `datasets/keep_outfit/` (+ secrets if needed)
-2. [ ] `git pull` / confirm `keep_outfit_reshape.v1` on `main`
-3. [ ] Local Comfy + SAM: `models/sams/sam_vit_b_01ec64.pth` if using Impact SAM refine
-4. [ ] Eval `holdout/h01_start.png` + `h02_start.png` with frozen denoise/strength; fill `scores/scorecard.csv`
-5. [ ] Add gold/hard pairs until lint is happy (20+ gold, 5+ holdout)
-6. [ ] Train custom LoRA → wire `private/lora_files.py` → holdout pass → `sync_runtime_overlay.py`
-7. [ ] Freeze numbers only after fixtures pass; stop per-photo denoise chasing
+1. [ ] `git pull` `origin main` on `wellswenger-svg/Maal`
+2. [ ] Copy `private/` from this GPU PC (required — not in git) + `datasets/keep_outfit/` (+ secrets if needed)
+3. [ ] Confirm overlay + weights: `overlay_status()` all True; `_find_weight(...)` finds front/back/unlock/PuLID
+4. [ ] Point `.env` `COMFYUI_URL` at this PC’s Comfy (tunnel/LAN) if using remote GPU
+5. [ ] Local Comfy + SAM: `models/sams/sam_vit_b_01ec64.pth` if using Impact SAM refine
+6. [ ] Eval `holdout/h01_start.png` + `h02_start.png` (`enhance_boobs` / `enhance_ass`); fill `scores/scorecard.csv`
+7. [ ] Near-term: mask/restore/denoise only — do **not** stack more Civitai bust LoRAs or PixAI
+8. [ ] Add gold/hard pairs until lint is happy (20+ gold, 5+ holdout)
+9. [ ] Train custom LoRA → **replace** `breast_enhance` in `private/lora_files.py` → holdout pass → `sync_runtime_overlay.py`
+10. [ ] Freeze numbers only after fixtures pass; stop per-photo denoise chasing
 
 ---
 

@@ -21,10 +21,21 @@ Training is done offline, then the `.safetensors` is dropped into Comfy and wire
 ## What you already have
 
 - Reshape weight in use today: Flux LoRA mapped as `breast_enhance` → `Huge_natural_breasts_for_FLUX_v2.safetensors`
+- Hip reshape (clothed back): `ass_enhance` / `hip_enhance` → `FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors`
 - Keep-outfit path: `keep_outfit_reshape.v1` (img2img + mask + PuLID pass A + soft garment restore)
 - Overlay strengths live in gitignored `private/edit_runner.py` / `private/lora_files.py`
 
-Training a **custom** LoRA means replacing or stacking that reshape weight — not re-tuning denoise per upload.
+Training a **custom** LoRA means **replacing** that reshape weight (not stacking another public bust LoRA, not PixAI).  
+Decision table + current wiring checklist: [`KEEP_OUTFIT_CONTINUE.md`](KEEP_OUTFIT_CONTINUE.md) § *LoRA strategy* / *Model wiring*.
+
+### Public sources — use how?
+
+| Source | Use for keep-outfit? |
+|--------|----------------------|
+| **Civitai / HuggingFace** | Download pinned `.safetensors` into Comfy only (see `private/catalog_loras.py`). Do not call at runtime. |
+| **PixAI** | **No** — hosted API; wrong stack for masked keep-outfit + PuLID. |
+| **Stack extra public bust LoRAs** | **No** — fights cloth lock; prefer one reshape id. |
+| **Your trained `keep_outfit_reshape_vN`** | **Yes** — replace `breast_enhance` mapping when holdout passes. |
 
 ## Goal of a proper keep-outfit LoRA
 
