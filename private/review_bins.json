@@ -1,0 +1,77 @@
+[
+  {
+    "id": "eb_unfiled",
+    "presetId": "enhance_boobs",
+    "label": "Boobs · unfiled",
+    "hint": "new front-enhance runs — approve here",
+    "unfiled": true
+  },
+  {
+    "id": "eb_keep",
+    "presetId": "enhance_boobs",
+    "label": "Boobs · keep",
+    "hint": "volume under cloth looks good"
+  },
+  {
+    "id": "eb_weak",
+    "presetId": "enhance_boobs",
+    "label": "Boobs · weak",
+    "hint": "too little change"
+  },
+  {
+    "id": "eb_blemish",
+    "presetId": "enhance_boobs",
+    "label": "Boobs · blemish",
+    "hint": "fabric/mask artifacts"
+  },
+  {
+    "id": "cc_unfiled",
+    "presetId": "cumshot_clothes",
+    "label": "Cumshot · unfiled",
+    "hint": "new runs — not sorted yet",
+    "unfiled": true
+  },
+  {
+    "id": "cc_keep",
+    "presetId": "cumshot_clothes",
+    "label": "Cumshot · keep",
+    "hint": "close to the refs"
+  },
+  {
+    "id": "cc_identity",
+    "presetId": "cumshot_clothes",
+    "label": "Cumshot · identity",
+    "hint": "face or hair drifted"
+  },
+  {
+    "id": "cc_fluid",
+    "presetId": "cumshot_clothes",
+    "label": "Cumshot · fluid",
+    "hint": "paint, coverage, or hair wash"
+  },
+  {
+    "id": "cg_unfiled",
+    "presetId": "cumshot_glasses",
+    "label": "Cum Glasses · unfiled",
+    "hint": "new runs — not sorted yet",
+    "unfiled": true
+  },
+  {
+    "id": "cg_keep",
+    "presetId": "cumshot_glasses",
+    "label": "Cum Glasses · keep",
+    "hint": "on lenses, identity ok"
+  },
+  {
+    "id": "cg_identity",
+    "presetId": "cumshot_glasses",
+    "label": "Cum Glasses · identity",
+    "hint": "face drifted"
+  },
+  {
+    "id": "cg_target",
+    "presetId": "cumshot_glasses",
+    "label": "Cum Glasses · targeting",
+    "hint": "not on glasses / too much face"
+  }
+]
