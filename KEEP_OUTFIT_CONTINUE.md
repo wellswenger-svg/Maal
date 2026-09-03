@@ -14,7 +14,7 @@ Lab folder notes: [`datasets/keep_outfit/README.md`](datasets/keep_outfit/README
 Public busty LoRAs only teach **bigger volume**. They do **not** lock the same garment.
 
 **Interim (2026-09-03):** replace `Huge_natural_breasts_for_FLUX_v2` with Kontext  
-`kontext_big_breasts_and_butts.safetensors` ([Civitai 1802814](https://civitai.com/models/1802814/bigger-breasts-and-butts-flux-kontext-lora))  
+`flux_kontext_figure_reshape_v1.safetensors` ([Civitai 1802814](https://civitai.com/models/1802814/bigger-breasts-and-butts-flux-kontext-lora))  
 at strength **0.55–0.70**. Do **not** stack other public bust LoRAs.
 
 So the product path compensates with:
@@ -39,7 +39,7 @@ Back preset = `enhance_ass` → same task + `ass_enhance`.
 |--------|--------|-----|
 | **Integrate PixAI** | **No** | Hosted gen API, not a Comfy LoRA. Breaks PuLID, garment masks, keep-outfit graph, identity lock. |
 | **Stack more Civitai bust LoRAs** | **No** | Competing concepts → worse drift. Skip slider / BustyWomen / Bolt-Ons / Huge Breasts pile-on. |
-| **Swap one Kontext bust LoRA into `breast_enhance`** | **Yes — try now** | [Bigger breasts and butts (Flux Kontext)](https://civitai.com/models/1802814) → `kontext_big_breasts_and_butts.safetensors`, strength **0.55–0.70**. Replace Huge_natural — do not stack. |
+| **Swap one Kontext bust LoRA into `breast_enhance`** | **Yes — try now** | [Bigger breasts and butts (Flux Kontext)](https://civitai.com/models/1802814) → `flux_kontext_figure_reshape_v1.safetensors`, strength **0.55–0.70**. Replace Huge_natural — do not stack. |
 | **Replace with your own keep-outfit LoRA** | **Yes — real fix** | Train on gold pairs → map `breast_enhance` to that `.safetensors`. |
 | **Civitai / HuggingFace as download source** | **Yes** | Pin URLs in `private/catalog_loras.py`. Download into Comfy `models/loras/` — do **not** call Civitai at runtime. |
 
@@ -48,7 +48,7 @@ Back preset = `enhance_ass` → same task + `ass_enhance`.
 
 ### Near term (before custom train)
 
-1. Download `kontext_big_breasts_and_butts.safetensors` onto the GPU Comfy `models/loras/`
+1. Download `flux_kontext_figure_reshape_v1.safetensors` onto the GPU Comfy `models/loras/`
 2. Wire `breast_enhance` / `bust_enhance` → that file @ **0.55–0.70** in `private/lora_files.py`
 3. Gate holdout + a few starts — if still bad vs refs, go to gold → custom LoRA
 4. Keep denoise band **0.55–0.70**; do not stack bust LoRAs
@@ -69,14 +69,14 @@ After `git pull` on another PC you still need a copy of `private/` (USB / sync) 
 
 | Logical id | Filename on Comfy shared `models/loras/` | Role | Strength (overlay) |
 |------------|------------------------------------------|------|--------------------|
-| `breast_enhance` / `bust_enhance` | `kontext_big_breasts_and_butts.safetensors` | Front volume (interim Kontext) | **0.55–0.70** |
+| `breast_enhance` / `bust_enhance` | `flux_kontext_figure_reshape_v1.safetensors` | Front volume (interim Kontext) | **0.55–0.70** |
 | `ass_enhance` / `hip_enhance` | `FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors` | Back / hips volume | **0.70** |
 | `nsfw_unlock` | `aidmaNSFWunlock-FLUX-V0.2.safetensors` | Unlock soft-refusal | ~0.95 clothed |
 | PuLID | `pulid_flux_v0.9.1.safetensors` (under `models/pulid/`) | Pass A identity | weight ~0.80–0.85 |
 
 Catalog pins (download sources) in `private/catalog_loras.py`:
 
-- Front: Civitai model `1802814` → `kontext_big_breasts_and_butts.safetensors` (replaces Huge Natural Breasts `780114`)  
+- Front: Civitai model `1802814` → `flux_kontext_figure_reshape_v1.safetensors` (replaces Huge Natural Breasts `780114`)  
 - Back: HuggingFace `75dhsx/Felldude` → LargeButt / SkinnyWaist FP8  
 - Unlock / wet / COF: see same file  
 
@@ -97,7 +97,7 @@ python -c "from backend.ai_engine.runtime_overlay import overlay_status; print(o
 # expect edit_runner / planner_rules / presets all True
 
 python -c "from backend.ai_engine.models.catalog import _find_weight
-for f in ['kontext_big_breasts_and_butts.safetensors','FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors','aidmaNSFWunlock-FLUX-V0.2.safetensors','pulid_flux_v0.9.1.safetensors']:
+for f in ['flux_kontext_figure_reshape_v1.safetensors','FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors','aidmaNSFWunlock-FLUX-V0.2.safetensors','pulid_flux_v0.9.1.safetensors']:
  print(f, '->', _find_weight(f))"
 ```
 Comfy on this PC: `COMFYUI_DIR=E:\Comfy-Desktop\ComfyUI-Installs\Khelukhiladi\ComfyUI` with shared models under `E:\Comfy-Desktop\ComfyUI-Shared\models\`. Point the other PC’s `.env` `COMFYUI_URL` at this box’s tunnel / LAN if using remote resources.
@@ -290,7 +290,7 @@ Full tables/checklist: [`KEEP_OUTFIT_LORA_TRAIN.md`](KEEP_OUTFIT_LORA_TRAIN.md).
 | PuLID | `pulid_flux_v0.9.1.safetensors` (Pass A ~denoise 0.40, no reshape LoRA) |
 | Pass B | masked reshape denoise **0.55–0.70** |
 | Pass C | paste face/straps from **start** |
-| Current reshape weight (front) | `kontext_big_breasts_and_butts.safetensors` (`breast_enhance`) @ 0.55–0.70 until custom keep-outfit LoRA ships |
+| Current reshape weight (front) | `flux_kontext_figure_reshape_v1.safetensors` (`breast_enhance`) @ 0.55–0.70 until custom keep-outfit LoRA ships |
 | Current reshape weight (back) | `FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors` (`ass_enhance` / `hip_enhance`) |
 | Mask region | `bust` / `hip` / `curves` via `keep_outfit_edit_mask_png(region=…)` |
 | Wrap | `fabric` |

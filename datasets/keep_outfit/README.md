@@ -10,7 +10,7 @@ PNGs are gitignored (`*.png`). README / captions / notes are tracked.
 **Replace** (do not stack) `Huge_natural_breasts_for_FLUX_v2` with:
 
 - **[Bigger breasts and butts — Flux Kontext LoRA](https://civitai.com/models/1802814/bigger-breasts-and-butts-flux-kontext-lora)**
-- File: `kontext_big_breasts_and_butts.safetensors`
+- File: `flux_kontext_figure_reshape_v1.safetensors`
 - Map: `breast_enhance` / `bust_enhance` → that file in `private/lora_files.py`
 - Strength: **0.55–0.70**
 - Skip other public bust LoRAs for keep-outfit for now

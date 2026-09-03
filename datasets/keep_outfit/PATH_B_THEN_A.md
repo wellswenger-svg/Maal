@@ -9,8 +9,8 @@ Public `Huge_natural_breasts_for_FLUX_v2` failed keep-outfit gates (nipples / ju
 | | |
 |--|--|
 | Model | [Bigger breasts and butts (Flux Kontext LoRA)](https://civitai.com/models/1802814/bigger-breasts-and-butts-flux-kontext-lora) |
-| File | `kontext_big_breasts_and_butts.safetensors` (latest Kontext version) |
-| Comfy path | `models/loras/kontext_big_breasts_and_butts.safetensors` |
+| File | `flux_kontext_figure_reshape_v1.safetensors` (latest Kontext version) |
+| Comfy path | `models/loras/flux_kontext_figure_reshape_v1.safetensors` |
 | Wire | `breast_enhance` / `bust_enhance` in `private/lora_files.py` |
 | Strength | **0.55–0.70** (start ~0.65) |
 | Skip for now | Breast size slider, BustyWomen, Bolt-Ons, Huge Breasts, Skinny&Big — do **not** stack |
