@@ -20,11 +20,11 @@ Training is done offline, then the `.safetensors` is dropped into Comfy and wire
 
 ## What you already have
 
-- Reshape weight in use: Flux Kontext LoRA mapped as `breast_enhance` → `flux_kontext_figure_reshape_v1.safetensors` @ **0.55–0.70** (replaces `Huge_natural_breasts_for_FLUX_v2`)
+- Reshape weight in use: Flux Kontext LoRA mapped as `breast_enhance` → `flux_clothed_figure_volume_v1.safetensors` @ **0.55–0.70** (replaces `Huge_natural_breasts_for_FLUX_v2`)
 - Download: https://civitai.com/models/1802814/bigger-breasts-and-butts-flux-kontext-lora  
 - Do **not** stack Breast size slider / BustyWomen / Bolt-Ons / Huge Breasts on keep-outfit
 - Longer continue notes: [`KEEP_OUTFIT_CONTINUE.md`](KEEP_OUTFIT_CONTINUE.md) · path: [`datasets/keep_outfit/PATH_B_THEN_A.md`](datasets/keep_outfit/PATH_B_THEN_A.md)
-- Hip reshape (clothed back): `ass_enhance` / `hip_enhance` → `FLUX_FD-LargeButt-SkinnyWaist-FP8.safetensors`
+- Hip reshape (clothed back): `ass_enhance` / `hip_enhance` → `flux_clothed_figure_hip_v1.safetensors`
 - Keep-outfit path: `keep_outfit_reshape.v1` (img2img + mask + PuLID pass A + soft garment restore)
 - Overlay strengths live in gitignored `private/edit_runner.py` / `private/lora_files.py`
 
@@ -38,7 +38,7 @@ Decision table + current wiring checklist: [`KEEP_OUTFIT_CONTINUE.md`](KEEP_OUTF
 | **Civitai / HuggingFace** | Download pinned `.safetensors` into Comfy only (see `private/catalog_loras.py`). Do not call at runtime. |
 | **PixAI** | **No** — hosted API; wrong stack for masked keep-outfit + PuLID. |
 | **Stack extra public bust LoRAs** | **No** — fights cloth lock; one reshape id only. |
-| **Kontext swap (interim)** | **Yes try** — `flux_kontext_figure_reshape_v1.safetensors` @ 0.55–0.70 replacing Huge_natural. |
+| **Kontext swap (interim)** | **Yes try** — `flux_clothed_figure_volume_v1.safetensors` @ 0.55–0.70 replacing Huge_natural. |
 | **Your trained `keep_outfit_reshape_vN`** | **Yes** — replace `breast_enhance` mapping when holdout passes. |
 
 ## Goal of a proper keep-outfit LoRA

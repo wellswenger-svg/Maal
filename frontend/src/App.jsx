@@ -241,6 +241,8 @@ export default function App() {
       const data = await listGenerations({
         limit: LIBRARY_PAGE_SIZE,
         skip,
+        // Tester PIN library = tagged test runs (batch outputs land here).
+        ...(isTesterOwner() ? { test_run: 1 } : {}),
       });
       const totalPages = Math.max(
         1,

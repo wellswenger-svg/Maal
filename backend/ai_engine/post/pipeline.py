@@ -186,18 +186,30 @@ async def run_post(
                         for t in (plan.targets or [])
                         if isinstance(t, dict)
                     }
-                    # Inner region from GPU; start photo everywhere else.
-                    if hints.get("clothed_enhance") or labels & {"chest", "bust"}:
+                    # keep_outfit runner already applied region_lock — do not paste twice
+                    # (double restore → near-identical / blemished outs).
+                    already = "region_lock" in str(result.model_label or "")
+                    if already:
+                        result.data = restore_original_face(
+                            original_bytes, result.data
+                        )
+                        applied.append("face_lock")
+                        applied.append("chest_lock_skipped_region_lock")
+                    elif hints.get("clothed_enhance") or labels & {"chest", "bust"}:
                         result.data = restore_outside_chest(
                             original_bytes, result.data
                         )
                         applied.append("chest_lock")
+                        result.data = restore_original_face(
+                            original_bytes, result.data
+                        )
+                        applied.append("face_lock")
                     else:
                         result.data = restore_original_face(
                             original_bytes, result.data
                         )
+                        applied.append("face_lock")
                     result.content_type = "image/png"
-                    applied.append("face_lock")
                 except Exception as exc:
                     result.warnings.append(f"face_lock_failed:{exc}")
                     deferred.append("face_lock")

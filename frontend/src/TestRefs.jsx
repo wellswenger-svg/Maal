@@ -45,7 +45,7 @@ export default function TestRefs({ onOpenLightbox }) {
     try {
       const [refData, runData] = await Promise.all([
         listTestRefs(id),
-        listTestRuns({ presetId: id, limit: 12 }),
+        listTestRuns({ presetId: id, limit: 50 }),
       ]);
       setRefs(Array.isArray(refData.items) ? refData.items : []);
       setRuns(Array.isArray(runData.items) ? runData.items : []);
