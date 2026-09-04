@@ -46,10 +46,10 @@ def register(add) -> None:
     )
     add(
         "lora.hip_enhance_flux",
-        filename="flux_clothed_figure_hip_v1.safetensors",
+        filename="flux_kontext_figure_reshape_v1.safetensors",
         role="lora",
         status="missing",
-        download_source="https://huggingface.co/75dhsx/Felldude",
+        download_source="https://civitai.com/models/1802814/bigger-breasts-and-butts-flux-kontext-lora",
     )
     add(
         "lora.video_lightx2v_unc_high",

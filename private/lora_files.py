@@ -12,8 +12,9 @@ LORA_FILES = {
     "bust_enhance": "flux_kontext_figure_reshape_v1.safetensors",
     "nsfw_unlock": "aidmaNSFWunlock-FLUX-V0.2.safetensors",
     "breast_enhance": "flux_kontext_figure_reshape_v1.safetensors",
-    "ass_enhance": "flux_clothed_figure_hip_v1.safetensors",
-    "hip_enhance": "flux_clothed_figure_hip_v1.safetensors",
+    # Same Kontext reshape as bust (breasts + butts trained together).
+    "ass_enhance": "flux_kontext_figure_reshape_v1.safetensors",
+    "hip_enhance": "flux_kontext_figure_reshape_v1.safetensors",
 }
 
 LORA_DEFAULT_STRENGTH = {
@@ -23,11 +24,11 @@ LORA_DEFAULT_STRENGTH = {
     "cof": 0.90,
     "see_through": 0.90,
     "wet_shirt": 0.88,
-    # Front clothed reshape (Flux Kontext). Civitai 1802814 → flux_kontext_figure_reshape_v1.
+    # Clothed reshape (Flux Kontext). Civitai 1802814 → flux_kontext_figure_reshape_v1.
     "bust_enhance": 0.82,
     "breast_enhance": 0.82,
-    "ass_enhance": 0.72,
-    "hip_enhance": 0.72,
+    "ass_enhance": 0.82,
+    "hip_enhance": 0.82,
 }
 
 WAN_NEGATIVE_EXTRA = (

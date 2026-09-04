@@ -283,8 +283,14 @@ def _select_loras(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
                 or 0.82
             ),
-            "ass_enhance": 0.70,
-            "hip_enhance": 0.70,
+            "ass_enhance": float(
+                __import__("os").environ.get("KEEP_OUTFIT_ASS_STRENGTH", "0.82")
+                or 0.82
+            ),
+            "hip_enhance": float(
+                __import__("os").environ.get("KEEP_OUTFIT_ASS_STRENGTH", "0.82")
+                or 0.82
+            ),
         }
     stack = ww.resolve_lora_stack(kept, strengths=strengths)
     # Stash miss list on the function for run_flux_edit tags (avoid silent empty stack).
