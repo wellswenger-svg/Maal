@@ -279,7 +279,10 @@ def _select_loras(
             "cof": 0.95 if undress_fluid else 0.58,
             "see_through": 0.90,
             "wet_shirt": 0.88,
-            "breast_enhance": 0.65,
+            "breast_enhance": float(
+                __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
+                or 0.82
+            ),
             "ass_enhance": 0.70,
             "hip_enhance": 0.70,
         }
@@ -782,10 +785,30 @@ async def run_flux_edit(
     if use_pose_control:
         use_kontext = False
         extra_tags.append("pose_controlnet")
-    elif keep_outfit or (clothed and not wet_sheer):
-        # ReferenceLatent ignores denoise, so keep-outfit reshape never lands.
+    elif keep_outfit:
+        import os as _os
+
+        # Optional: force masked Dev/Kontext *img2img* for hard layered tops.
+        if (_os.environ.get("KEEP_OUTFIT_FORCE_I2I") or "").strip() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            use_kontext = False
+            extra_tags.append("keep_outfit_i2i")
+            if not flux_unet_forced:
+                flux_unet_forced = KONTEXT_UNET
+        else:
+            # Bigger breasts/butts LoRA is Flux-Kontext native — ReferenceLatent
+            # follows the instruction + LoRA better than low-denoise i2i.
+            use_kontext = True
+            extra_tags.append("keep_outfit_kontext")
+            if not flux_unet_forced:
+                flux_unet_forced = KONTEXT_UNET
+    elif clothed and not wet_sheer:
+        # Non-keep clothed size-up still uses masked i2i.
         use_kontext = False
-        extra_tags.append("keep_outfit_i2i" if keep_outfit else "clothed_i2i")
+        extra_tags.append("clothed_i2i")
         if not flux_unet_forced:
             flux_unet_forced = KONTEXT_UNET
     degraded = (
@@ -821,11 +844,10 @@ async def run_flux_edit(
     if wet_sheer and not use_kontext:
         denoise = min(max(float(denoise), 0.84), 0.92)
         extra_tags.append("wet_sheer_cap")
-    # Clothed enhance: chest-only noise mask. Keep denoise high enough for volume,
-    # low enough that the core does not smear into fabric noise.
+    # Clothed enhance: chest-only noise mask. Volume + tighter cloth need room
+    # above 0.70; face/hands are restored in post.
     if keep_outfit and not use_kontext:
-        # Prefer top of band so reshape LoRA can move volume under cloth.
-        denoise = min(max(float(denoise_override or denoise or 0.66), 0.62), 0.70)
+        denoise = min(max(float(denoise_override or denoise or 0.80), 0.76), 0.86)
         extra_tags.append("keep_outfit_reshape_cap")
     elif clothed and not use_kontext:
         denoise = min(max(float(denoise), 0.80), 0.86)
@@ -850,15 +872,18 @@ async def run_flux_edit(
     )
     _CLOTHED_NEG = (
         "nude, naked, topless, bottomless, undress, no clothes, removed clothes, "
-        "bare breasts, exposed nipples, nipples visible, nipple outline, areola, "
+        "bare breasts, exposed breasts, breasts outside clothes, "
+        "exposed nipples, nipples visible, nipple outline, areola, "
+        "nipple poke, poking nipples, hard nipples through fabric, "
         "breasts popping out, spilling out of clothes, "
         "breasts resting on top of the shirt, breasts above the neckline, "
         "breasts sitting on the collar, pulled-down neckline, shirt too short, "
+        "chest cutouts, boob windows, underboob cutout, sideboob hole, "
         "incomplete clothes, "
         "frayed hem, unfinished shirt, different neckline, "
         "lingerie only, see-through clothes, translucent shirt, poke-through nipples, "
         "wet clingy nipples, "
-        "flat chest, small bust, no cleavage, unchanged chest, "
+        "flat chest, small bust, no cleavage, unchanged chest, loose baggy top, "
         "recolored shirt, different colored top, "
         "nipple outline, areola through clothes, see-through knit, hard vertical cleavage slit, "
         "warped torso, melted fabric, smeared hands, faded hands, blurry fingers, "
@@ -1018,6 +1043,8 @@ async def run_flux_edit(
         denoise_cap = max(denoise_cap, 0.92)
     if clothed:
         denoise_cap = max(denoise_cap, 0.90)
+    if keep_outfit:
+        denoise_cap = max(denoise_cap, 0.88)
     if use_pose_control:
         denoise_cap = max(denoise_cap, 0.92)
 
@@ -1031,8 +1058,17 @@ async def run_flux_edit(
             g = 3.6  # LoRAs drive wet/sheer; high CFG was swapping in a black dress
         if pose_edit:
             g = 4.0  # full body pose change; 3.0 only kneel-sits
-        if clothed:
-            g = 4.1  # enough size-up; 4.8 popped out of the neckline
+        if clothed or keep_outfit:
+            g = 3.8  # strong size-up; face restored in post for keep_outfit
+            if keep_outfit:
+                import os as _os
+
+                g_override = (_os.environ.get("KEEP_OUTFIT_GUIDANCE") or "").strip()
+                if g_override:
+                    try:
+                        g = float(g_override)
+                    except ValueError:
+                        pass
         data, content_type = await client.generate_image(
             work_bytes,
             final_prompt,
@@ -1046,6 +1082,13 @@ async def run_flux_edit(
             guidance=g,
             loras=lora_stack,
         )
+        if keep_outfit and data:
+            from backend.ai_engine.post.face_lock import restore_original_face
+
+            # Kontext rewrites the full frame — do not soft-paste the start
+            # torso (that caused ghosting). Only lock the face.
+            data = restore_original_face(image_bytes, data)
+            extra_tags.append("face_lock")
     else:
         g = None
         if use_pose_control:

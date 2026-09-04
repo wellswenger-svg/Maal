@@ -60,7 +60,7 @@
     "label": "Boobs",
     "hint": "cleavage · clothed",
     "mode": "img",
-    "prompt": "Photorealistic edit of the exact woman in the start image. CRITICAL: keep her exact same face, hair, pose, framing, lighting, background, and the SAME clothes fully on — same outfit, fabric, color, cut, straps, sleeves, hem, and coverage. Keep any object in her hands unchanged. Do not recolor. Do not undress. Only change this: make her bust obviously larger and fuller under that same opaque top — deep cleavage line at the neckline, two round breasts stretching the fabric, cloth fully covering with natural folds. No nipples, no areola, no poke-through, no different outfit. Crisp focus, realistic cloth folds, no face morphing."
+    "prompt": "Photorealistic edit of the exact woman in the start image. Keep her exact same face, hair, identity, pose, framing, lighting, background, and handheld objects. Keep the SAME opaque outfit fully on — same garment type, color, neckline, straps, coverage. Clothes stay opaque and closed; no cutouts, no holes, no undressing, no bare breasts. Do not swap to a new outfit. The clothes MUST change fit only: stretch much tighter over a massively larger bust under the cloth. Only change this: huge, full, heavy breasts under that same top — two round high-volume breasts filling and straining the fabric, deep cleavage, tight stretched opaque cloth with stronger folds and tension. Fabric remains solid and covering. The original modest chest is wrong. Do not return an unchanged photo. No nipples, no areola, no poke-through, no face morphing. Crisp focus."
   },
   {
     "id": "enhance_ass",
@@ -74,7 +74,7 @@
     "label": "Enhance",
     "hint": "boobs + ass · clothed",
     "mode": "img",
-    "prompt": "Photorealistic edit of the exact woman in the start image. CRITICAL: keep her exact same face, hair, pose, framing, lighting, background, and the SAME clothes fully on — same outfit, fabric, color, and coverage. Do not undress. Do not make her nude or topless. Only change this: enhance her look from this camera view — make breasts/cleavage clearly larger and fuller and make her ass/hips clearly larger and rounder while clothed, with fabric stretching naturally over the bigger shapes. Crisp focus, realistic cloth folds, no face morphing."
+    "prompt": "Photorealistic edit of the exact woman in the start image. Keep her exact same face, hair, identity, pose, framing, lighting, and background. Keep the SAME outfit on — same garment type, color, and coverage. Do not undress. Clothes may stretch tighter over bigger shapes. Only change this: make breasts clearly much larger and fuller and make her ass/hips clearly larger and rounder under the same clothes, with fabric stretched tight over the bigger volume. Do not return an unchanged photo. Crisp focus, no face morphing."
   },
   {
     "id": "oral",

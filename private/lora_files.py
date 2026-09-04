@@ -24,8 +24,8 @@ LORA_DEFAULT_STRENGTH = {
     "see_through": 0.90,
     "wet_shirt": 0.88,
     # Front clothed reshape (Flux Kontext). Civitai 1802814 → flux_kontext_figure_reshape_v1.
-    "bust_enhance": 0.65,
-    "breast_enhance": 0.65,
+    "bust_enhance": 0.82,
+    "breast_enhance": 0.82,
     "ass_enhance": 0.72,
     "hip_enhance": 0.72,
 }
