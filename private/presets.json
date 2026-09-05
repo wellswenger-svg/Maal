@@ -53,7 +53,7 @@
     "label": "Wet Shirt",
     "hint": "see-through · keep top on",
     "mode": "img",
-    "prompt": "Photorealistic edit of the exact woman in the start image. Keep her exact face, hair, identity, pose, framing, and background. Keep the SAME shirt/top ON her body — same color, same cut, same neckline, same sleeves. Do not take it off. Do not change it into a different outfit. REQUIRED: wet clothes, see through clothes, transparent clothes. Soak THIS garment so it clings to her chest with shiny water highlights, fabric turned translucent so breast shape and nipples clearly show through the wet material. The dry shirt must look obviously wet and sheer, not the original dry clothes. Do not return an unchanged photo. Crisp focus, realistic wet fabric, no face morphing."
+    "prompt": "Photorealistic edit of the exact woman in the start image. Keep her exact face, hair, identity, pose, framing, and background. Keep the SAME shirt/top ON her body — same color, same cut, same neckline, same sleeves. Do not take it off. Do not change it into a different outfit. REQUIRED: wet clothes, soaking wet, wet hair, see through clothes, transparent clothes. Soak THIS garment so it clings to her chest with shiny water highlights and water droplets, fabric turned translucent so breast shape and nipples clearly show through the wet material. The dry shirt must look obviously wet and sheer, not the original dry clothes. Do not return an unchanged photo. Crisp focus, realistic wet fabric, no face morphing."
   },
   {
     "id": "enhance_boobs",
@@ -75,6 +75,27 @@
     "hint": "boobs + ass · clothed",
     "mode": "img",
     "prompt": "Photorealistic edit of the exact woman in the start image. Keep her exact same face, hair, identity, pose, framing, lighting, and background. Keep the SAME outfit on — same garment type, color, and coverage. Do not undress. Clothes may stretch tighter over bigger shapes. Only change this: make breasts clearly much larger and fuller and make her ass/hips clearly larger and rounder under the same clothes, with fabric stretched tight over the bigger volume. Do not return an unchanged photo. Crisp focus, no face morphing."
+  },
+  {
+    "id": "act_bj",
+    "label": "BJ",
+    "hint": "POV oral · img",
+    "mode": "img",
+    "prompt": "bl0j0, girl, blowjob, pov, penis. Photorealistic img2img of the exact woman from the start image. Keep her exact face, eyes, hair, skin tone, and identity. Remove her clothes. Close-up POV blowjob: she is kneeling, looking up at the camera, lips wrapped around an erect penis in her mouth, first-person viewer angle, male torso/hips only at top of frame. Very detailed erected penis. Sharp face, realistic wet lips, no tongue stretch, no cartoon, no face morph."
+  },
+  {
+    "id": "act_hj",
+    "label": "HJ",
+    "hint": "hands · img",
+    "mode": "img",
+    "prompt": "detailed hands. Photorealistic img2img of the exact woman from the start image. Keep her exact face, eyes, hair, skin tone, and identity. Remove her clothes. Handjob: she sits or kneels facing the camera, both hands stroking a very detailed erected penis in the foreground, fingers clearly wrapped around the shaft, POV from slightly above. Sharp face, natural fingers, no melted hands, no face morph."
+  },
+  {
+    "id": "act_titjob",
+    "label": "Titjob",
+    "hint": "chest · img",
+    "mode": "img",
+    "prompt": "Photorealistic img2img of the exact woman from the start image. Keep her exact face, eyes, hair, skin tone, and identity. Remove her top so breasts are bare. Titjob / paizuri: she presses her breasts together around a very detailed erected penis between them, upper-body close framing, looking at camera. Breasts squeezed together, penis between breasts. Sharp face, realistic anatomy, no face morph."
   },
   {
     "id": "oral",

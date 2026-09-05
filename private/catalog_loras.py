@@ -32,10 +32,10 @@ def register(add) -> None:
     )
     add(
         "lora.wet_shirt_flux",
-        filename="WetshirtForFlux-1.4.safetensors",
+        filename="Wet_ClothesHair_FLUX.safetensors",
         role="lora",
         status="missing",
-        download_source="https://civitai.com/models/724562",
+        download_source="https://civitai.com/models/1459149/wet-clotheshair-flux",
     )
     add(
         "lora.bust_enhance_flux",
@@ -142,4 +142,25 @@ def register(add) -> None:
         filename="SmoothMix_Males.safetensors",
         role="lora",
         status="missing",
+    )
+    add(
+        "lora.oral_pov_flux",
+        filename="flux_pov_a_v1.safetensors",
+        role="lora",
+        status="missing",
+        download_source="https://civitai.com/models/678730",
+    )
+    add(
+        "lora.male_anatomy_flux",
+        filename="flux_anatomy_m_v1.safetensors",
+        role="lora",
+        status="missing",
+        download_source="https://civitai.com/models/824972",
+    )
+    add(
+        "lora.detailed_hands_flux",
+        filename="flux_hands_detail_v1.safetensors",
+        role="lora",
+        status="missing",
+        download_source="https://civitai.com/models/891074",
     )

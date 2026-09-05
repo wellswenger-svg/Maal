@@ -166,6 +166,24 @@ def _fluid_target_label(text: str) -> str:
     return "face"
 
 
+# Img act edits (Flux LoRAs) — before undress / pose so BJ/HJ/titjob win.
+_ACT_ORAL = re.compile(
+    r"\b(blowjob|bj\b|oral|fellatio|deepthroat|giving\s+head|"
+    r"suck(s|ing)?\s+(his|a|the|an)?\s*(erect\s+)?(penis|dick|cock)|"
+    r"sucks?\s+his\s+erect\s+penis)\b",
+    re.I,
+)
+_ACT_HANDJOB = re.compile(
+    r"\b(handjob|hand[\s-]?job|hj\b|stroking\s+(his|a|the)?\s*(erect\s+)?"
+    r"(penis|dick|cock)|hand\s+on\s+(his|a|the)\s+(erect\s+)?(penis|dick|cock))\b",
+    re.I,
+)
+_ACT_TITJOB = re.compile(
+    r"\b(titjob|tit[\s-]?job|tittyfuck|paizuri|boobjob|boob[\s-]?job|"
+    r"penis\s+between\s+(her\s+)?breasts|between\s+(her\s+)?breasts)\b",
+    re.I,
+)
+
 # Rear / all-fours pose change (image edit — not video doggy sex)
 _POSE_REAR = re.compile(
     r"\b("
@@ -373,6 +391,75 @@ def classify(req: "GenerateRequest") -> RuleResult:
             perception=["face_detect"],
         )
 
+    # Img act edits (BJ / HJ / titjob) before fluid/undress — Flux act LoRAs.
+    if req.mode != "vid":
+        if _ACT_ORAL.search(text) and not _ACT_TITJOB.search(text):
+            return RuleResult(
+                task_type="edit.general_instruction",
+                confidence=0.94,
+                bypass_vlm=True,
+                reason="img_act_oral_pov_pattern",
+                targets=[{"label": "body", "role": "act_region"}],
+                perception=[],
+                identity={"enabled": True, "method": "pulid"},
+                post_hints=["face_detailer"],
+                params_hints={
+                    "loras": [
+                        "clothes_remover",
+                        "nsfw_unlock",
+                        "oral_pov",
+                        "male_anatomy",
+                    ],
+                    "nsfw_edit": True,
+                    "act_edit": "oral",
+                    "denoise": 0.95,
+                },
+            )
+        if _ACT_HANDJOB.search(text) and not _ACT_ORAL.search(text):
+            return RuleResult(
+                task_type="edit.general_instruction",
+                confidence=0.94,
+                bypass_vlm=True,
+                reason="img_act_handjob_pattern",
+                targets=[{"label": "body", "role": "act_region"}],
+                perception=[],
+                identity={"enabled": True, "method": "pulid"},
+                post_hints=["face_detailer"],
+                params_hints={
+                    "loras": [
+                        "clothes_remover",
+                        "nsfw_unlock",
+                        "male_anatomy",
+                        "detailed_hands",
+                    ],
+                    "nsfw_edit": True,
+                    "act_edit": "handjob",
+                    "denoise": 0.94,
+                },
+            )
+        if _ACT_TITJOB.search(text):
+            return RuleResult(
+                task_type="edit.general_instruction",
+                confidence=0.94,
+                bypass_vlm=True,
+                reason="img_act_titjob_pattern",
+                targets=[{"label": "body", "role": "act_region"}],
+                perception=[],
+                identity={"enabled": True, "method": "pulid"},
+                post_hints=["face_detailer"],
+                params_hints={
+                    "loras": [
+                        "clothes_remover",
+                        "nsfw_unlock",
+                        "breast_enhance",
+                        "male_anatomy",
+                    ],
+                    "nsfw_edit": True,
+                    "act_edit": "titjob",
+                    "denoise": 0.94,
+                },
+            )
+
     # Cum / fluid overlays before face/hair/undress (avoids expression-only + undress traps).
     # Use general_instruction (Kontext-first) — add_object prefers Flux Fill and rewrites faces.
     if _FLUID.search(text) and req.mode != "vid":
@@ -512,7 +599,7 @@ def classify(req: "GenerateRequest") -> RuleResult:
                     "loras": ["nsfw_unlock", "see_through", "wet_shirt"],
                     "nsfw_edit": True,
                     "wet_sheer": True,
-                    "denoise": 0.88,
+                    "denoise": 0.92,
                 },
             )
 

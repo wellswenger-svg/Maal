@@ -15,3 +15,4 @@ Required for local/API extras:
 - catalog_loras.py
 - download_pose_loras.py
 - download_wet_sheer_loras.py
+- download_flux_act_loras.py
