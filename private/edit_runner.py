@@ -293,7 +293,7 @@ def _select_loras(
             import os as _os_wet_lora
 
             see_w = float(_os_wet_lora.environ.get("WET_SEE_THROUGH_STRENGTH", "0.70") or 0.70)
-            wet_w = float(_os_wet_lora.environ.get("WET_SHIRT_STRENGTH", "0.90") or 0.90)
+            wet_w = float(_os_wet_lora.environ.get("WET_SHIRT_STRENGTH", "0.85") or 0.85)
             if see_w > 0.01 and "see_through" not in ids:
                 ids.append("see_through")
             if wet_w > 0.01 and "wet_shirt" not in ids:
@@ -360,8 +360,8 @@ def _select_loras(
                 or 0.70
             ),
             "wet_shirt": float(
-                __import__("os").environ.get("WET_SHIRT_STRENGTH", "0.90")
-                or 0.90
+                __import__("os").environ.get("WET_SHIRT_STRENGTH", "0.85")
+                or 0.85
             ),
             "breast_enhance": float(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")

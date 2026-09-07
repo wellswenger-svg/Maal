@@ -8,8 +8,8 @@ LORA_FILES = {
     "content_unlock": "aidmaNSFWunlock-FLUX-V0.2.safetensors",
     "cof": "COF_v6.safetensors",
     "see_through": "See_through_clothes_FLUX.safetensors",
-    # Invisidude Wet T-Shirt Flux v1.4 (replaces Lurulf Wet_ClothesHair)
-    "wet_shirt": "WetshirtForFlux-1.4.safetensors",
+    # Lurulf Wet Clothes/Hair V1 — 292MB Flux.1 D (Civitai 1459149). Stronger than Invisidude 36MB.
+    "wet_shirt": "Wet_ClothesHair_FLUX.safetensors",
     "bust_enhance": "flux_kontext_figure_reshape_v1.safetensors",
     "nsfw_unlock": "aidmaNSFWunlock-FLUX-V0.2.safetensors",
     "breast_enhance": "flux_kontext_figure_reshape_v1.safetensors",
@@ -17,8 +17,8 @@ LORA_FILES = {
     "ass_enhance": "flux_kontext_figure_reshape_v1.safetensors",
     "hip_enhance": "flux_kontext_figure_reshape_v1.safetensors",
     # Img act LoRAs (Flux.1 D) — generic on-disk names; triggers live in edit_runner.
-    # Keltezaa Blowjob PoV (replaces getphat bl0j0 / flux_pov_a_v1)
-    "oral_pov": "flux_pov_bj_v2.safetensors",
+    # getphat POV Blowjob FLUX (bl0j0) — 584MB Flux.1 D. Tiny 19MB Keltezaa rank-8 does not drive the act.
+    "oral_pov": "flux_pov_a_v1.safetensors",
     "male_anatomy": "flux_anatomy_m_v1.safetensors",
     "detailed_hands": "flux_hands_detail_v1.safetensors",
 }
@@ -29,7 +29,7 @@ LORA_DEFAULT_STRENGTH = {
     "nsfw_unlock": 0.80,
     "cof": 0.90,
     "see_through": 0.70,
-    "wet_shirt": 0.90,
+    "wet_shirt": 0.85,
     # Clothed reshape (Flux Kontext). Civitai 1802814 → flux_kontext_figure_reshape_v1.
     "bust_enhance": 0.82,
     "breast_enhance": 0.82,

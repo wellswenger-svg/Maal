@@ -1,7 +1,7 @@
 """Download Flux img act LoRAs into Comfy shared loras (generic local names).
 
-Pins (2026-09-07):
-  - oral_pov -> flux_pov_bj_v2.safetensors (Keltezaa Blowjob PoV)
+Pins:
+  - oral_pov -> flux_pov_a_v1.safetensors (getphat POV Blowjob FLUX / bl0j0, 584MB)
   - male_anatomy / hands unchanged
 
 Does not commit weights. See datasets/keep_outfit/GPU_LORA_SWAP_WET_ACT.md
@@ -18,12 +18,11 @@ OUT = Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras")
 
 # local_name -> (min_bytes, [(repo, remote), ...])
 TARGETS: dict[str, tuple[int, list[tuple[str, str]]]] = {
-    # Keltezaa Blowjob PoV — HF may ship a weird remote filename; rename to this.
-    "flux_pov_bj_v2.safetensors": (
-        50 * 1024 * 1024,
+    # getphat POV Blowjob FLUX — 584MB; HF dump mirror (same SHA as Civitai 678730).
+    "flux_pov_a_v1.safetensors": (
+        400 * 1024 * 1024,
         [
-            ("Keltezaa/blowjob-pov-flux-lora", "wsssssssssss.safetensors"),
-            ("Keltezaa/blowjob-pov-flux-lora", "flux_pov_bj_v2.safetensors"),
+            ("Muntadher-Saleh/kmk", "bl0j0.safetensors"),
         ],
     ),
     "flux_anatomy_m_v1.safetensors": (
