@@ -1,6 +1,10 @@
 """Download Flux img act LoRAs into Comfy shared loras (generic local names).
 
-Does not commit weights. Remote filenames stay as published; on-disk names are sanitized.
+Pins (2026-09-07):
+  - oral_pov -> flux_pov_bj_v2.safetensors (Keltezaa Blowjob PoV)
+  - male_anatomy / hands unchanged
+
+Does not commit weights. See datasets/keep_outfit/GPU_LORA_SWAP_WET_ACT.md
 """
 from __future__ import annotations
 
@@ -14,13 +18,12 @@ OUT = Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras")
 
 # local_name -> (min_bytes, [(repo, remote), ...])
 TARGETS: dict[str, tuple[int, list[tuple[str, str]]]] = {
-    "flux_pov_a_v1.safetensors": (
-        200 * 1024 * 1024,
+    # Keltezaa Blowjob PoV — HF may ship a weird remote filename; rename to this.
+    "flux_pov_bj_v2.safetensors": (
+        50 * 1024 * 1024,
         [
-            ("Chroma111/CivitAI-Archive", "678730/759748/bl0j0.safetensors"),
-            ("wsj1995/LORA", "678730/759748/bl0j0.safetensors"),
-            ("minaiosu/getphat", "bl0j0.safetensors"),
-            ("yoadster/lorasv2", "body/poses/bl0j0.safetensors"),
+            ("Keltezaa/blowjob-pov-flux-lora", "wsssssssssss.safetensors"),
+            ("Keltezaa/blowjob-pov-flux-lora", "flux_pov_bj_v2.safetensors"),
         ],
     ),
     "flux_anatomy_m_v1.safetensors": (
@@ -70,7 +73,7 @@ def main() -> int:
             except Exception as exc:
                 print(f"FAIL {local_name} via {repo}: {exc}")
         if not got:
-            print(f"MISSING {local_name}")
+            print(f"MISSING {local_name} — download manually and rename (see GPU_LORA_SWAP_WET_ACT.md)")
     return 0 if ok == len(TARGETS) else 1
 
 

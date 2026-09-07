@@ -1,10 +1,11 @@
 """Download Flux wet/sheer clothing LoRAs into Comfy shared loras.
 
-Pins:
+Pins (2026-09-07 swap):
   - See through clothes FLUX v2 — civitai.com/models/1028424
-  - Wet Clothes/Hair (FLUX) by Lurulf — civitai.com/models/1459149
+  - Wet T-Shirt and Wet Clothes Flux v1.4 (Invisidude) — civitai.com/models/724562
 
 Does not commit weights. Prefers HuggingFace CivitAI-Archive, then Civitai API.
+See datasets/keep_outfit/GPU_LORA_SWAP_WET_ACT.md
 """
 from __future__ import annotations
 
@@ -25,11 +26,11 @@ TARGETS: dict[str, tuple[int, str | None, str]] = {
         "1028424/1392314/See_through_clothes_FLUX.safetensors",
         "https://civitai.com/api/download/models/1392314?fileId=1294759",
     ),
-    # Lurulf Wet Clothes/Hair V1 (replaces WetshirtForFlux for wet_shirt slot)
-    "Wet_ClothesHair_FLUX.safetensors": (
-        100 * 1024 * 1024,
-        "1459149/1650048/Wet_ClothesHair_FLUX.safetensors",
-        "https://civitai.com/api/download/models/1650048?fileId=1566446",
+    # Invisidude Wet T-Shirt Flux v1.4 (replaces Lurulf Wet_ClothesHair)
+    "WetshirtForFlux-1.4.safetensors": (
+        20 * 1024 * 1024,
+        "724562/810200/WetshirtForFlux-1.4.safetensors",
+        "https://civitai.com/api/download/models/810200",
     ),
 }
 

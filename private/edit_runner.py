@@ -81,6 +81,22 @@ _DO_NOT_CHANGE_SPAN = re.compile(
     r"\b(do\s+not|don'?t)\s+change\s+(her\s+)?[^.]{0,40}",
     re.I,
 )
+
+
+def _keep_outfit_hip_job(prompt: str) -> bool:
+    """Ass/hip keep-outfit (frozen ASS recipe) vs bust keep-outfit."""
+    p = prompt or ""
+    if re.search(
+        r"\b(enhance her ass|ass/hips|larger (ass|hips)|hip reshape)\b",
+        p,
+        re.I,
+    ):
+        return True
+    return bool(_ASS_HINT.search(p)) and bool(
+        re.search(r"do not change her breasts", p, re.I)
+    )
+
+
 _POSE_REAR_HINT = re.compile(
     r"\b("
     r"all\s+fours|on\s+all\s+fours|hands?\s+and\s+knees|"
@@ -274,14 +290,18 @@ def _select_loras(
         if fluid and not undress_fluid and "cof" not in ids:
             ids.append("cof")
         if wet_sheer:
-            if "see_through" not in ids:
+            import os as _os_wet_lora
+
+            see_w = float(_os_wet_lora.environ.get("WET_SEE_THROUGH_STRENGTH", "0.70") or 0.70)
+            wet_w = float(_os_wet_lora.environ.get("WET_SHIRT_STRENGTH", "0.90") or 0.90)
+            if see_w > 0.01 and "see_through" not in ids:
                 ids.append("see_through")
-            if "wet_shirt" not in ids:
+            if wet_w > 0.01 and "wet_shirt" not in ids:
                 ids.append("wet_shirt")
     # Kontext undress: clothes_remover first, then unlock
     elif not act and use_kontext and undress and "clothes_remover" not in ids:
         ids = ["clothes_remover", *[x for x in ids if x != "clothes_remover"]]
-    if clothed and not act:
+    if clothed and not act and not wet_sheer:
         labels = {
             str(t.get("label") or "")
             for t in (getattr(plan, "targets", None) or [])
@@ -306,34 +326,55 @@ def _select_loras(
             missing.append(str(lid))
     strengths = None
     if nsfw:
+        # Clothed keep-outfit: 0.55 (frozen v2). Act/undress/fluid/pose: 0.95.
         unlock_w = (
             1.05
             if wet_sheer
             else (
-                0.95
-                if (fluid or clothed or undress_fluid or pose_edit or act)
-                else 0.90
+                0.55
+                if clothed and not act
+                else (
+                    0.95
+                    if (fluid or undress_fluid or pose_edit or act)
+                    else 0.90
+                )
             )
         )
+        # Override: KEEP_OUTFIT_UNLOCK_STRENGTH (clothed / keep-outfit only).
+        import os as _os_unlock
+
+        _u_ov = (_os_unlock.environ.get("KEEP_OUTFIT_UNLOCK_STRENGTH") or "").strip()
+        if _u_ov and clothed:
+            try:
+                unlock_w = float(_u_ov)
+            except ValueError:
+                pass
         remover_w = 0.98 if (undress_fluid or pose_undress) else 0.95
         strengths = {
             "clothes_remover": remover_w,
             "nsfw_unlock": unlock_w,
             # Mild COF for face fluid (slimy ropes); high → opaque paint.
             "cof": 0.95 if undress_fluid else 0.58,
-            "see_through": 0.80,
-            "wet_shirt": 0.85,
+            "see_through": float(
+                __import__("os").environ.get("WET_SEE_THROUGH_STRENGTH", "0.70")
+                or 0.70
+            ),
+            "wet_shirt": float(
+                __import__("os").environ.get("WET_SHIRT_STRENGTH", "0.90")
+                or 0.90
+            ),
             "breast_enhance": float(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
                 or 0.82
             ),
+            # Frozen ASS recipe: 1.35 (gate 9/9 → gold/055–063).
             "ass_enhance": float(
-                __import__("os").environ.get("KEEP_OUTFIT_ASS_STRENGTH", "0.82")
-                or 0.82
+                __import__("os").environ.get("KEEP_OUTFIT_ASS_STRENGTH", "1.35")
+                or 1.35
             ),
             "hip_enhance": float(
-                __import__("os").environ.get("KEEP_OUTFIT_ASS_STRENGTH", "0.82")
-                or 0.82
+                __import__("os").environ.get("KEEP_OUTFIT_ASS_STRENGTH", "1.35")
+                or 1.35
             ),
             "oral_pov": 1.05,
             "male_anatomy": 0.80,
@@ -871,6 +912,23 @@ async def run_flux_edit(
         flux_unet_forced = None
         denoise = max(float(denoise), 0.94)
         extra_tags.append("act_i2i_dev")
+    elif wet_sheer:
+        # Wet/see-through LoRAs are Flux-Dev img2img trained. Kontext ReferenceLatent
+        # either barely soaks or swaps the whole top — never use for wet_sheer.
+        use_kontext = False
+        flux_unet_forced = None
+        import os as _os_wet
+
+        d_ov = (_os_wet.environ.get("WET_SHEER_DENOISE") or "").strip()
+        if d_ov:
+            try:
+                denoise = float(d_ov)
+            except ValueError:
+                denoise = max(float(denoise), 0.88)
+        else:
+            # Soft soak: high denoise melts identity / swaps the top.
+            denoise = max(float(denoise), 0.70)
+        extra_tags.append("wet_sheer_i2i")
     elif keep_outfit:
         import os as _os
 
@@ -928,14 +986,20 @@ async def run_flux_edit(
         # High denoise so ControlNet pose can reshape; identity from start latent.
         denoise = min(max(float(denoise), 0.86), 0.92)
     if wet_sheer and not use_kontext:
-        denoise = min(max(float(denoise), 0.84), 0.92)
-        extra_tags.append("wet_sheer_cap")
+        # Allow probe override; default soft soak window (too high → clothing swap).
+        import os as _os_wet_cap
+
+        if (_os_wet_cap.environ.get("WET_SHEER_DENOISE") or "").strip():
+            extra_tags.append("wet_sheer_cap")
+        else:
+            denoise = min(max(float(denoise), 0.65), 0.78)
+            extra_tags.append("wet_sheer_cap")
     # Clothed enhance: chest-only noise mask. Volume + tighter cloth need room
     # above 0.70; face/hands are restored in post.
     if keep_outfit and not use_kontext:
         denoise = min(max(float(denoise_override or denoise or 0.80), 0.76), 0.86)
         extra_tags.append("keep_outfit_reshape_cap")
-    elif clothed and not use_kontext:
+    elif clothed and not use_kontext and not wet_sheer:
         denoise = min(max(float(denoise), 0.80), 0.86)
         extra_tags.append("clothed_enhance_cap")
 
@@ -1086,11 +1150,19 @@ async def run_flux_edit(
             for fn, _, _ in lora_stack
         ):
             if "volume under cloth" not in final_prompt.lower():
-                final_prompt = (
-                    "same garment type and color, volume under cloth, fabric may drape, "
-                    "shirt covering chest. "
-                    + final_prompt
-                )
+                hip_job = _keep_outfit_hip_job(prompt or "")
+                if hip_job:
+                    final_prompt = (
+                        "same garment type and color, volume under cloth, fabric may drape, "
+                        "clothes covering hips and ass, much larger rounder butt and hips. "
+                        + final_prompt
+                    )
+                else:
+                    final_prompt = (
+                        "same garment type and color, volume under cloth, fabric may drape, "
+                        "shirt covering chest. "
+                        + final_prompt
+                    )
         if any("clothes_remover" in fn.lower() for fn, _, _ in lora_stack):
             # Clothes-remover LoRA responds better with an explicit undress cue.
             low = final_prompt.lower()
@@ -1194,8 +1266,10 @@ async def run_flux_edit(
             g = 3.6  # LoRAs drive wet/sheer; high CFG was swapping in a black dress
         if pose_edit:
             g = 4.0  # full body pose change; 3.0 only kneel-sits
+        hip_job = _keep_outfit_hip_job(prompt or "") if (clothed or keep_outfit) else False
         if clothed or keep_outfit:
-            g = 3.8  # strong size-up; face restored in post for keep_outfit
+            # Bust frozen v2: 3.8. Ass frozen: 4.2 (ASS_RECIPE gate).
+            g = 4.2 if hip_job else 3.8
             if keep_outfit:
                 import os as _os
 
@@ -1205,6 +1279,9 @@ async def run_flux_edit(
                         g = float(g_override)
                     except ValueError:
                         pass
+        # Ass frozen primary seed 99 when caller omits seed.
+        if hip_job and seed is None:
+            seed = 99
         data, content_type = await client.generate_image(
             work_bytes,
             final_prompt,
@@ -1220,11 +1297,99 @@ async def run_flux_edit(
         )
         if keep_outfit and data:
             from backend.ai_engine.post.face_lock import restore_original_face
+            import os as _os_retry
+
+            # Multi-seed / salvage retry: seed-42 alone undresses hard saree/crop
+            # cases (gold 019–023 were made at seed 7 / breast 0.95 / g 4.2).
+            # Chest metrics — bust jobs only (ass/hip skips cloth-retry).
+            skip_retry = hip_job or (_os_retry.environ.get("KEEP_OUTFIT_NO_RETRY") or "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+            )
+            base_seed = int(seed) if seed is not None else (99 if hip_job else 42)
+            attempts: list[dict[str, Any]] = [
+                {"seed": base_seed, "breast": None, "guidance": g, "tag": "primary"},
+            ]
+            if not skip_retry:
+                attempts.extend(
+                    [
+                        {"seed": 7, "breast": 0.82, "guidance": 3.8, "tag": "s7"},
+                        {"seed": 7, "breast": 0.95, "guidance": 4.2, "tag": "s7_hard"},
+                        {"seed": 99, "breast": 0.95, "guidance": 4.2, "tag": "s99_hard"},
+                        {"seed": 21, "breast": 0.82, "guidance": 3.8, "tag": "s21"},
+                    ]
+                )
+            # Deduplicate identical (seed,breast,guidance)
+            seen_att: set[tuple] = set()
+            uniq_attempts: list[dict[str, Any]] = []
+            for att in attempts:
+                key = (att["seed"], att["breast"], att["guidance"])
+                if key in seen_att:
+                    continue
+                seen_att.add(key)
+                uniq_attempts.append(att)
+
+            best_data = data
+            best_skin = _chest_skin_delta(image_bytes, data)
+            best_vol = _chest_change_mae(image_bytes, data)
+            # Rank: cloth-safe first, then volume near gold-typical (~8–16 chest MAE).
+            best_rank = (
+                max(0.0, best_skin - 0.02),
+                abs(best_vol - 12.0),
+                -best_vol if best_vol < 5.0 else 0.0,
+            )
+            best_tag = "primary"
+            for att in uniq_attempts[1:]:
+                # Early stop when cloth-safe and volume in the gold-typical band.
+                if best_skin < 0.035 and 6.0 <= best_vol <= 16.0:
+                    break
+                stack_att = lora_stack
+                if att["breast"] is not None:
+                    stack_att = _stack_with_breast_strength(lora_stack, float(att["breast"]))
+                try:
+                    cand, content_type = await client.generate_image(
+                        work_bytes,
+                        final_prompt,
+                        negative=negative,
+                        seed=int(att["seed"]),
+                        steps=steps,
+                        max_width=max_side,
+                        max_height=max_side,
+                        flux_unet=flux_unet,
+                        edit_graph="kontext",
+                        guidance=float(att["guidance"]),
+                        loras=stack_att,
+                    )
+                except Exception:
+                    continue
+                if not cand:
+                    continue
+                skin_d = _chest_skin_delta(image_bytes, cand)
+                vol = _chest_change_mae(image_bytes, cand)
+                rank = (
+                    max(0.0, skin_d - 0.02),
+                    abs(vol - 12.0),
+                    -vol if vol < 5.0 else 0.0,
+                )
+                if rank < best_rank:
+                    best_data, best_skin, best_vol, best_rank, best_tag = (
+                        cand,
+                        skin_d,
+                        vol,
+                        rank,
+                        str(att["tag"]),
+                    )
+            data = best_data
+            if best_tag != "primary":
+                extra_tags.append(f"cloth_retry:{best_tag}")
+            extra_tags.append(f"cloth_skin:{best_skin:.3f}")
 
             # Kontext rewrites the full frame — do not soft-paste the start
             # torso (that caused ghosting). Only lock the face.
             data = restore_original_face(image_bytes, data)
             extra_tags.append("face_lock")
+            data = _maybe_opaque_bust_apex(image_bytes, data, extra_tags)
     else:
         g = None
         if use_pose_control:
@@ -1338,7 +1503,14 @@ async def run_flux_edit(
         else:
             _garment_png = None
             _edit_mask_png = None
-            if clothed:
+            if wet_sheer:
+                from backend.ai_engine.post.face_lock import bust_inpaint_mask_png
+
+                # Soak the top only — keeps face/background from high-denoise drift.
+                mask_bytes = bust_inpaint_mask_png(work_bytes, settings=settings)
+                extra_tags.append("wet_chest_inpaint")
+                _edit_mask_png = mask_bytes
+            elif clothed:
                 from backend.ai_engine.post.face_lock import (
                     bust_inpaint_mask_png,
                     hip_inpaint_mask_png,
@@ -1395,7 +1567,18 @@ async def run_flux_edit(
                 )
             else:
                 raise
-        if clothed and data:
+        if wet_sheer and data:
+            from backend.ai_engine.post.face_lock import restore_original_face
+
+            data = restore_original_face(source_bytes, data)
+            extra_tags.append("face_lock")
+        elif act_edit and data:
+            from backend.ai_engine.post.face_lock import restore_original_face
+
+            # High denoise act i2i melts identity — stamp start face back.
+            data = restore_original_face(source_bytes, data)
+            extra_tags.append("face_lock")
+        elif clothed and data:
             from backend.ai_engine.post.face_lock import (
                 restore_original_face,
                 restore_outside_chest,
@@ -1411,9 +1594,125 @@ async def run_flux_edit(
             extra_tags.append("region_lock")
             if _edit_mask_png:
                 extra_tags.append("soft_garment_restore")
+            data = _maybe_opaque_bust_apex(source_bytes, data, extra_tags)
     if extra_tags:
         model_label = f"{model_label}|{'|'.join(extra_tags)}"
     return data, content_type, "img", model_label
+
+
+def _chest_skin_delta(start_bytes: bytes, out_bytes: bytes) -> float:
+    """Fabric-region skin increase (undress / tear proxy). Lower is better."""
+    import numpy as np
+
+    start = np.asarray(Image.open(BytesIO(start_bytes)).convert("RGB"), np.float32)
+    out = np.asarray(Image.open(BytesIO(out_bytes)).convert("RGB"), np.float32)
+    if out.shape != start.shape:
+        out = np.asarray(
+            Image.fromarray(out.astype(np.uint8)).resize(
+                start.shape[1::-1], Image.Resampling.LANCZOS
+            ),
+            np.float32,
+        )
+    h, w = start.shape[:2]
+    band = start[
+        int(h * 0.30) : int(h * 0.62),
+        int(w * 0.18) : int(w * 0.82),
+    ]
+    out_b = out[
+        int(h * 0.30) : int(h * 0.62),
+        int(w * 0.18) : int(w * 0.82),
+    ]
+    r, g, b = out_b[..., 0], out_b[..., 1], out_b[..., 2]
+    skin_o = (
+        (r > g) & (g > b) & (r > 95) & (r < 240) & ((r - b) > 25) & ((r - g) < 70)
+    )
+    r0, g0, b0 = band[..., 0], band[..., 1], band[..., 2]
+    skin_s = (
+        (r0 > g0)
+        & (g0 > b0)
+        & (r0 > 95)
+        & (r0 < 240)
+        & ((r0 - b0) > 25)
+        & ((r0 - g0) < 70)
+    )
+    mx = band.max(axis=-1)
+    mn = band.min(axis=-1)
+    fab = ((mx - mn) < 45) & (mx > 120)
+    if fab.any():
+        return float(skin_o[fab].mean() - skin_s[fab].mean())
+    return float(skin_o.mean() - skin_s.mean())
+
+
+def _chest_change_mae(start_bytes: bytes, out_bytes: bytes) -> float:
+    import numpy as np
+
+    start = np.asarray(Image.open(BytesIO(start_bytes)).convert("RGB"), np.float32)
+    out = np.asarray(Image.open(BytesIO(out_bytes)).convert("RGB"), np.float32)
+    if out.shape != start.shape:
+        out = np.asarray(
+            Image.fromarray(out.astype(np.uint8)).resize(
+                start.shape[1::-1], Image.Resampling.LANCZOS
+            ),
+            np.float32,
+        )
+    h, w = start.shape[:2]
+    ys, xs = slice(int(h * 0.32), int(h * 0.62)), slice(int(w * 0.22), int(w * 0.78))
+    return float(np.abs(out[ys, xs] - start[ys, xs]).mean())
+
+
+def _stack_with_breast_strength(
+    stack: list[tuple[str, float, str]], strength: float
+) -> list[tuple[str, float, str]]:
+    out: list[tuple[str, float, str]] = []
+    for fn, w, name in stack:
+        low = f"{fn} {name}".lower()
+        if any(
+            k in low
+            for k in (
+                "figure_reshape",
+                "breast",
+                "busty",
+                "huge_natural",
+                "kontext_big_breasts",
+                "figure_volume",
+            )
+        ):
+            out.append((fn, float(strength), name))
+        else:
+            out.append((fn, w, name))
+    return out
+
+
+def _maybe_opaque_bust_apex(
+    original_bytes: bytes,
+    edited_bytes: bytes,
+    extra_tags: list[str],
+) -> bytes:
+    """Post: opaque tip coverage on keep-outfit / clothed bust results.
+
+    Applies to every similar keep-outfit image (not a single test case).
+    Disable with KEEP_OUTFIT_OPAQUE_APEX=0.
+    """
+    import os as _os
+
+    flag = (_os.environ.get("KEEP_OUTFIT_OPAQUE_APEX") or "1").strip().lower()
+    if flag in ("0", "false", "no", "off"):
+        return edited_bytes
+    try:
+        from backend.ai_engine.post.opaque_apex import opaque_bust_apex
+
+        strength = 1.0
+        s_ov = (_os.environ.get("KEEP_OUTFIT_OPAQUE_APEX_STRENGTH") or "").strip()
+        if s_ov:
+            try:
+                strength = float(s_ov)
+            except ValueError:
+                pass
+        out = opaque_bust_apex(original_bytes, edited_bytes, strength=strength)
+        extra_tags.append("opaque_apex")
+        return out
+    except Exception:
+        return edited_bytes
 
 
 def make_runner(
