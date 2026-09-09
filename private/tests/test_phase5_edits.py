@@ -127,20 +127,6 @@ class Phase5HelperTests(unittest.TestCase):
         )
         self.assertIn("mask_failed", text)
 
-    def test_wet_sheer_prompt_requires_visible_change(self) -> None:
-        text = build_edit_prompt(
-            user_prompt="soak her shirt so it is wet and see-through",
-            task_kind="instruction",
-            raw_prompt=True,
-        ).lower()
-        self.assertIn("see through clothes", text)
-        self.assertIn("do not output the original dry clothes", text)
-        self.assertIn("translucent", text)
-        self.assertIn("same color", text)
-        self.assertIn("different outfit", text)
-        self.assertNotIn("darker, dripping-wet", text)
-        self.assertNotIn("black dress", text)
-
     def test_pose_prompt_keeps_full_face_in_frame(self) -> None:
         text = build_edit_prompt(
             user_prompt="put her bent over on her hands and knees, keep clothes on",
@@ -521,71 +507,7 @@ class ClothedEnhancePathTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("warped background", neg)
         self.assertIn("yellow stain", neg)
 
-    async def test_no_sheer_negation_does_not_load_see_through(self) -> None:
-        from backend.ai_engine.schema import ModelBindResult
-        from backend.ai_engine.workflows._shared.edit_runner import run_flux_edit
-        from backend.config import Settings
-
-        captured: dict = {}
-
-        class _Client:
-            async def generate_image(self, *args, **kwargs):
-                captured.update(kwargs)
-                return b"png", "image/png"
-
-        plan = ExecutionPlan(
-            planner_path="rules",
-            task_type="edit.general_instruction",
-            confidence=0.92,
-            targets=[{"label": "cleavage", "role": "reshape_region"}],
-            params_hints={
-                "loras": ["nsfw_unlock", "breast_enhance"],
-                "nsfw_edit": True,
-                "clothed_enhance": True,
-                "denoise": 0.84,
-            },
-        )
-        settings = Settings.model_construct(
-            mongodb_uri="mongodb://localhost",
-            raw_prompt=True,
-            image_denoise=0.55,
-            image_denoise_cap=0.85,
-        )
-        backbone = ModelBindResult(
-            model_id="backbone.flux_kontext_dev_fp8",
-            tier="preferred",
-            filename="flux1-dev-kontext_fp8_scaled.safetensors",
-        )
-        prompt = (
-            "huge natural breasts under clothes keep clothes on, "
-            "make her bust larger with more cleavage. "
-            "No nipples, no areola, no poke-through, no sheer fabric."
-        )
-        with patch(
-            "backend.ai_engine.workflows._shared.edit_runner.ComfyClient",
-            return_value=_Client(),
-        ), patch(
-            "backend.ai_engine.workflows._shared.edit_runner._lora_available",
-            return_value=True,
-        ):
-            _data, _ct, _kind, label = await run_flux_edit(
-                image_bytes=_png(),
-                prompt=prompt,
-                negative=None,
-                seed=1,
-                settings=settings,
-                plan=plan,
-                backbone=backbone,
-                task_kind="instruction",
-            )
-        self.assertIn("clothed_i2i", label)
-        self.assertNotIn("wet_sheer", label.lower())
-        names = " ".join(str(x) for x in (captured.get("loras") or [])).lower()
-        self.assertNotIn("see_through", names)
-        self.assertNotIn("wet_shirt", names)
-        self.assertEqual(captured.get("edit_graph"), "img2img")
-
-    def test_no_sheer_clothed_prompt_does_not_wrap_as_wet(self) -> None:
+    def test_clothed_prompt_stays_opaque(self) -> None:
         text = build_edit_prompt(
             user_prompt=(
                 "huge natural breasts under clothes keep clothes on, "
@@ -595,9 +517,8 @@ class ClothedEnhancePathTests(unittest.IsolatedAsyncioTestCase):
             targets=[{"label": "cleavage"}],
             raw_prompt=True,
         ).lower()
-        self.assertNotIn("see through clothes", text)
-        self.assertNotIn("do not make the cloth opaque", text)
-        self.assertIn("cloth stays opaque", text)
+        self.assertIn("keep the cloth opaque", text)
+        self.assertIn("do not undress", text)
 
     def test_clothed_prompt_keeps_neckline_in_place(self) -> None:
         text = build_edit_prompt(
@@ -606,9 +527,8 @@ class ClothedEnhancePathTests(unittest.IsolatedAsyncioTestCase):
             targets=[{"label": "cleavage"}],
             raw_prompt=True,
         ).lower()
-        self.assertIn("same neckline", text)
-        self.assertIn("inside the current collar", text)
-        self.assertIn("do not expose nipples", text)
+        self.assertIn("keep straps and hem in place", text)
+        self.assertIn("keep all clothing on", text)
 
 
 if __name__ == "__main__":

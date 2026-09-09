@@ -41,14 +41,14 @@ DOWNLOADS: list[tuple[str, str, str]] = [
         "DR34ML4Y_I2V_14B_LOW.safetensors",
     ),
     (
-        "Daxxx3D/Deepthroat_Blowjob_Wan2.2_I2V",
-        "jfj-deepthroat-W22-I2V-HN.safetensors",
-        "Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
+        "UnifiedHorusRA/TheWan2.2I2V3",
+        "Blink_Blowjob_I2V/Wan_Video_2_2_I2V-A14B/iGOON_Blink_Blowjob_I2V_HIGH.safetensors",
+        "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
     ),
     (
-        "Daxxx3D/Deepthroat_Blowjob_Wan2.2_I2V",
-        "jfj-deepthroat-W22-I2V-LN.safetensors",
-        "Wan2.2_I2V_Deepthroat_Blowjob_Low.safetensors",
+        "UnifiedHorusRA/TheWan2.2I2V3",
+        "Blink_Blowjob_I2V/Wan_Video_2_2_I2V-A14B/iGOON_Blink_Blowjob_I2V_LOW.safetensors",
+        "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
     ),
     (
         "onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",

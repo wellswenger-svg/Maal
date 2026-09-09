@@ -104,8 +104,8 @@ class LoraStackResolveTests(unittest.TestCase):
             "female_genitalia_enhancer_low.safetensors",
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
             "PENISLORA_22_i2v_LOW_e496.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_Low.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
             "DR34ML4Y_I2V_14B_HIGH.safetensors",
             "DR34ML4Y_I2V_14B_LOW.safetensors",
             "Cumshot_LoRA.safetensors",
@@ -120,7 +120,7 @@ class LoraStackResolveTests(unittest.TestCase):
             )
         self.assertIn("penis_lora_high", stack.applied_ids)
         self.assertIn("male_gen_high", stack.applied_ids)
-        # Deepthroat only when motion kind is deepthroat (not generic NSFW).
+        # Deepthroat only when oral/deepthroat motion (not generic NSFW).
         self.assertNotIn("deepthroat_high", stack.applied_ids)
         # Distill skipped on NSFW so anatomy LoRAs keep strength budget.
         self.assertNotIn("lightx2v_unc_high", stack.applied_ids)
@@ -152,7 +152,7 @@ class LoraStackResolveTests(unittest.TestCase):
                 motion_kinds=["nsfw_action", "oral"],
             )
         self.assertIn("penis_lora_high", stack.applied_ids)
-        self.assertNotIn("deepthroat_high", stack.applied_ids)
+        self.assertIn("deepthroat_high", stack.applied_ids)
         self.assertIn("oral_insertion_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
@@ -166,8 +166,8 @@ class LoraStackResolveTests(unittest.TestCase):
             "female_genitalia_enhancer_low.safetensors",
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
             "PENISLORA_22_i2v_LOW_e496.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_Low.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
             "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
             "Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
             "Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
@@ -184,7 +184,7 @@ class LoraStackResolveTests(unittest.TestCase):
                 motion_kinds=["nsfw_action", "oral"],
             )
         self.assertIn("penis_lora_high", stack.applied_ids)
-        self.assertNotIn("deepthroat_high", stack.applied_ids)
+        self.assertIn("deepthroat_high", stack.applied_ids)
         self.assertIn("oral_insertion_high", stack.applied_ids)
         self.assertNotIn("reveal_penis_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
@@ -195,7 +195,7 @@ class LoraStackResolveTests(unittest.TestCase):
     def test_deepthroat_kind_loads_deepthroat_lora(self) -> None:
         available = {
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
         }
         with patch.object(ls, "_lora_dirs", return_value=[]):
@@ -216,8 +216,8 @@ class LoraStackResolveTests(unittest.TestCase):
             "female_genitalia_enhancer_low.safetensors",
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
             "PENISLORA_22_i2v_LOW_e496.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_Low.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
             "DR34ML4Y_I2V_14B_HIGH.safetensors",
             "DR34ML4Y_I2V_14B_LOW.safetensors",
             "Wan2.2_I2V_Missionary_HIGH.safetensors",
@@ -267,7 +267,7 @@ class LoraStackResolveTests(unittest.TestCase):
         available = {
             "male_genitalia_enhancer_high.safetensors",
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
-            "Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "female_genitalia_enhancer_high.safetensors",
             "Wan2.2_I2V_Handjob_HIGH.safetensors",
             "Cumshot_LoRA.safetensors",

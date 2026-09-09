@@ -18,24 +18,10 @@ def register(add) -> None:
     )
     add(
         "lora.cof_flux",
-        filename="COF_v6.safetensors",
+        filename="flux_facial_fluid_v1.safetensors",
         role="lora",
         status="missing",
-        download_source="https://civitai.com/models/725999",
-    )
-    add(
-        "lora.see_through_flux",
-        filename="See_through_clothes_FLUX.safetensors",
-        role="lora",
-        status="missing",
-        download_source="https://civitai.com/models/1028424",
-    )
-    add(
-        "lora.wet_shirt_flux",
-        filename="Wet_ClothesHair_FLUX.safetensors",
-        role="lora",
-        status="missing",
-        download_source="https://civitai.com/models/1459149",
+        download_source="https://civitai.com/models/858262",
     )
     add(
         "lora.bust_enhance_flux",
@@ -98,17 +84,17 @@ def register(add) -> None:
     )
     add(
         "lora.video_deep_a_high",
-        filename="Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
+        filename="Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
         role="lora",
         status="missing",
-        download_source="https://huggingface.co/Daxxx3D/Deepthroat_Blowjob_Wan2.2_I2V",
+        download_source="https://huggingface.co/UnifiedHorusRA/TheWan2.2I2V3",
     )
     add(
         "lora.video_deep_a_low",
-        filename="Wan2.2_I2V_Deepthroat_Blowjob_Low.safetensors",
+        filename="Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
         role="lora",
         status="missing",
-        download_source="https://huggingface.co/Daxxx3D/Deepthroat_Blowjob_Wan2.2_I2V",
+        download_source="https://huggingface.co/UnifiedHorusRA/TheWan2.2I2V3",
     )
     add(
         "lora.video_dr34ml4y_high",
@@ -142,25 +128,4 @@ def register(add) -> None:
         filename="SmoothMix_Males.safetensors",
         role="lora",
         status="missing",
-    )
-    add(
-        "lora.oral_pov_flux",
-        filename="flux_pov_a_v1.safetensors",
-        role="lora",
-        status="missing",
-        download_source="https://civitai.com/models/678730",
-    )
-    add(
-        "lora.male_anatomy_flux",
-        filename="flux_anatomy_m_v1.safetensors",
-        role="lora",
-        status="missing",
-        download_source="https://civitai.com/models/824972",
-    )
-    add(
-        "lora.detailed_hands_flux",
-        filename="flux_hands_detail_v1.safetensors",
-        role="lora",
-        status="missing",
-        download_source="https://civitai.com/models/891074",
     )

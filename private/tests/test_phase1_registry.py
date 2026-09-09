@@ -144,111 +144,7 @@ class AiEnginePhase2RulesTests(unittest.TestCase):
         self.assertEqual(r.task_type, "edit.general_instruction")
         self.assertEqual(r.targets[0]["label"], "hair")
 
-    def test_cumshot_lips_preset_targets_lips(self) -> None:
-        prompt = (
-            "Photorealistic edit of the exact woman in the start image. "
-            "CRITICAL: keep her exact same face geometry, eyes, eyebrows, nose, jaw, "
-            "skin tone, age, hair, body, clothes, pose, framing, lighting, and background. "
-            "Do not remake or replace her. "
-            "Only change this: put realistic fresh semen on her lips and mouth only — "
-            "whitish translucent cum is splattered as shallow cream-grey opalescent gooey "
-            "droplets, thin film, lip color still showing through, uneven beads and a wet sheen, "
-            "without covering cheeks or forehead. "
-            "Not paint, not makeup, not a solid blob, not a uniform coat. "
-            "Keep her clothes on. Do not undress her. Crisp focus, high detail fluids."
-        )
-        r = rules.classify(_req(prompt))
-        self.assertEqual(r.reason, "fluid_overlay_pattern")
-        self.assertEqual(r.targets[0]["label"], "lips")
-        self.assertIn("nsfw_unlock", r.params_hints.get("loras") or [])
-        self.assertIn("cof", r.params_hints.get("loras") or [])
-        self.assertFalse(r.params_hints.get("undress_fluid"))
-
-    def test_cumshot_glasses_preset_targets_glasses(self) -> None:
-        prompt = (
-            "Photorealistic edit of the exact woman in the start image. "
-            "CRITICAL: keep her exact same face geometry, eyes, eyebrows, nose, lip shape, "
-            "jaw, skin tone, age, hair, body, clothes, pose, framing, lighting, and background. "
-            "Do not remake or replace her. "
-            "Only change this: put realistic fresh semen on her glasses and lenses only — "
-            "whitish translucent cum is splattered as shallow cream-grey opalescent droplets "
-            "and thin watery streaks, glass still readable through the film, uneven not a "
-            "uniform smear. "
-            "Not paint, not opaque blobs. If she is not wearing glasses, keep the edit "
-            "subtle on the eyewear area only. "
-            "Keep her clothes on. Do not undress her. Crisp focus, high detail fluids."
-        )
-        r = rules.classify(_req(prompt))
-        self.assertEqual(r.reason, "fluid_overlay_pattern")
-        self.assertEqual(r.targets[0]["label"], "glasses")
-        self.assertIn("nsfw_unlock", r.params_hints.get("loras") or [])
-        self.assertIn("cof", r.params_hints.get("loras") or [])
-        self.assertNotIn("clothes_remover", r.params_hints.get("loras") or [])
-
-    def test_pose_all_fours_clothed_preset(self) -> None:
-        prompt = (
-            "Photorealistic edit of the exact woman in the start image. "
-            "CRITICAL: keep her exact same face, hair, skin tone, body proportions, identity, "
-            "outfit, fabric, color, and clothing coverage. Keep her clothes on. Do not undress. "
-            "Do not make her nude or topless. "
-            "Only change this: put her on all fours — both palms and both knees on the floor, "
-            "torso parallel to the ground, hips raised, ass up, full body in frame, natural matching body. "
-            "Keep her face visible — 3/4 camera, looking back over her shoulder; do not hide her face, "
-            "do not show only the back of her head, do not crop to a seated portrait. "
-            "Same background and lighting. Crisp focus, realistic cloth folds, no face morphing, no extra people."
-        )
-        r = rules.classify(_req(prompt))
-        self.assertEqual(r.reason, "pose_rear_clothed_pattern")
-        self.assertTrue(r.params_hints.get("pose_edit"))
-        self.assertFalse(r.params_hints.get("pose_undress"))
-        self.assertEqual(r.params_hints.get("loras"), ["nsfw_unlock"])
-        self.assertNotIn("clothes_remover", r.params_hints.get("loras") or [])
-
-    def test_pose_all_fours_nude_preset(self) -> None:
-        prompt = (
-            "Photorealistic edit of the exact woman in the start image. "
-            "CRITICAL: keep her exact same face, hair, skin tone, body proportions, and identity. "
-            "Do not remake or replace her face. "
-            "Remove all clothing so she is fully nude. Put her on all fours — both palms and both "
-            "knees on the floor, torso parallel to the ground, hips raised, ass up, full body in frame, "
-            "natural bare breasts and realistic female anatomy matching her start-image body. "
-            "Keep her face visible — 3/4 camera, looking back over her shoulder; do not hide her face, "
-            "do not show only the back of her head, do not crop to a seated portrait. "
-            "Same background and lighting as the start image. Crisp focus, high detail skin, "
-            "no face morphing, no extra people."
-        )
-        r = rules.classify(_req(prompt))
-        self.assertEqual(r.reason, "pose_rear_undress_pattern")
-        self.assertTrue(r.params_hints.get("pose_edit"))
-        self.assertTrue(r.params_hints.get("pose_undress"))
-        self.assertIn("clothes_remover", r.params_hints.get("loras") or [])
-        self.assertIn("nsfw_unlock", r.params_hints.get("loras") or [])
-        self.assertEqual(r.targets[0]["label"], "body")
-
-    def test_wet_sheer_shirt_preset(self) -> None:
-        prompt = (
-            "Photorealistic edit of the exact woman in the start image. Keep her exact face, "
-            "hair, identity, pose, framing, and background. "
-            "Keep the SAME shirt/top ON her body — same color, same cut, same neckline, same sleeves. "
-            "Do not take it off. Do not change it into a different outfit. "
-            "REQUIRED: wet clothes, see through clothes, transparent clothes. Soak THIS garment so it "
-            "clings to her chest with shiny water highlights, fabric turned translucent so breast "
-            "shape and nipples clearly show through the wet material. "
-            "The dry shirt must look obviously wet and sheer, not the original dry clothes. "
-            "Do not return an unchanged photo. "
-            "Crisp focus, realistic wet fabric, no face morphing."
-        )
-        r = rules.classify(_req(prompt))
-        self.assertEqual(r.reason, "wet_sheer_shirt_pattern")
-        self.assertTrue(r.params_hints.get("wet_sheer"))
-        self.assertIn("nsfw_unlock", r.params_hints.get("loras") or [])
-        self.assertIn("see_through", r.params_hints.get("loras") or [])
-        self.assertIn("wet_shirt", r.params_hints.get("loras") or [])
-        self.assertNotIn("clothes_remover", r.params_hints.get("loras") or [])
-        self.assertNotEqual(r.reason, "undress_nsfw_pattern")
-        self.assertEqual(r.targets[0]["label"], "shirt")
-
-    def test_no_sheer_negation_stays_clothed_not_wet(self) -> None:
+    def test_clothed_bust_enhance_keeps_clothes(self) -> None:
         r = rules.classify(
             _req(
                 "make her bust larger keep clothes on. "
@@ -257,8 +153,7 @@ class AiEnginePhase2RulesTests(unittest.TestCase):
         )
         self.assertEqual(r.reason, "clothed_body_enhance_pattern")
         self.assertTrue(r.params_hints.get("clothed_enhance"))
-        self.assertFalse(r.params_hints.get("wet_sheer"))
-        self.assertNotIn("see_through", r.params_hints.get("loras") or [])
+        self.assertNotIn("clothes_remover", r.params_hints.get("loras") or [])
 
     def test_cumshot_clothes_preset_keeps_clothes(self) -> None:
         prompt = (

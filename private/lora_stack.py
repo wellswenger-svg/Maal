@@ -61,15 +61,14 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "PENISLORA_22_i2v_HIGH_e191.safetensors",
         ),
     ),
+    # iGOON Blink Blowjob — portrait→BJ jumpcut (replaces K3NK Ultimate Deepthroat).
     LoraSpec(
         "deepthroat_high",
         "high",
-        0.65,
+        0.85,
         (
-            "Wan2.2_I2V_Deepthroat_Blowjob_High.safetensors",
-            "jfj-deepthroat-W22-I2V-HN.safetensors",
-            "wan22-ultimatedeepthroat-i2v-102epoc-high-k3nk.safetensors",
-            "wan22-ultimatedeepthroat-I2V-34epoc-high-k3nk.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
+            "iGOON_Blink_Blowjob_I2V_HIGH.safetensors",
         ),
     ),
     # Oral Insertion — trigger: "A man appears and she sucks his penis"
@@ -135,11 +134,10 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "deepthroat_low",
         "low",
-        0.60,
+        0.80,
         (
-            "Wan2.2_I2V_Deepthroat_Blowjob_Low.safetensors",
-            "jfj-deepthroat-W22-I2V-LN.safetensors",
-            "wan22-ultimatedeepthroat-I2V-101epoc-low-k3nk.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
+            "iGOON_Blink_Blowjob_I2V_LOW.safetensors",
         ),
     ),
     LoraSpec(
@@ -471,9 +469,9 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     # (stacking both with Deepthroat muddy the face and soften detail).
     if spec_id.startswith("oral_insertion"):
         return oral
-    # Deepthroat LoRA is aggressive on the face — only when explicitly requested.
+    # Blink Blowjob LoRA drives BJ motion for oral + explicit deepthroat.
     if spec_id.startswith("deepthroat"):
-        return "deepthroat" in kinds
+        return oral
     if spec_id.startswith("reveal_penis"):
         return handjob and not oral
     # Male gen enhancer is redundant when PENISLORA + oral insertion are on.

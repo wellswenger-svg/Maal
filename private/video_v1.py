@@ -97,9 +97,11 @@ async def run_i2v_v1(
         # Mild CFG — high CFG fights the start image and softens the face.
         cfg = min(max(cfg, 3.5), 3.7)
         steps = max(steps, 42)
-        # Prefer sharper native resolution for NSFW quality runs.
-        if pname in ("quality", "ultra"):
-            max_side = max(max_side, 832)
+        # NSFW I2V softens badly under 720 — keep native detail for faces/acts.
+        # Oral needs even more side length; balanced was landing ~464x640 mush.
+        floor = 832 if oralish else 720
+        if pname in ("balanced", "quality", "ultra") or oralish:
+            max_side = max(max_side, floor)
         # Skip deferred RIFE annotation — interpolation softens detail if wired later.
         if plan is not None and params.get("post"):
             params = {**params, "post": [p for p in (params.get("post") or []) if "rife" not in str(p)]}

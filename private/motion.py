@@ -199,13 +199,19 @@ def scaffold_i2v_prompt(
         edit = f"{edit}. PENISLORA"
     kinds_l = [str(k) for k in kinds]
     if nsfw and ("oral" in kinds_l or "deepthroat" in kinds_l):
-        # Oral Insertion LoRA trigger — pulls a male partner into the start frame.
+        # Oral Insertion trigger — partner enters frame from solo start.
         if not re.search(
             r"a man appears and she sucks his (erect )?penis",
             edit,
             re.I,
         ):
             edit = f"{edit}. A man appears and she sucks his penis"
+        # Blink Blowjob I2V — portrait→kneeling BJ transition cue.
+        if not re.search(r"jumpcut|kneeling in front", edit, re.I):
+            edit = (
+                f"{edit}. Then jumpcut to the same woman kneeling in front of him "
+                "giving a blowjob, looking up, holding his penis with both hands"
+            )
     edit = edit.rstrip(". ")
 
     if nsfw:

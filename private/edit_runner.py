@@ -30,24 +30,7 @@ _NSFW_HINT = re.compile(
     r"\b(nude|naked|topless|undress|strip|nsfw|nipples?|"
     r"remove\s+(the\s+)?(top|shirt|clothes|clothing|bra)|"
     r"cumshot|cum\b|semen|cleavage|breasts?|boobs?|ass\b|booty|"
-    r"blowjob|bj\b|fellatio|deepthroat|handjob|hand[\s-]?job|hj\b|"
-    r"titjob|tit[\s-]?job|paizuri|boobjob|oral|"
     r"penis|dick|cock)\b",
-    re.I,
-)
-_ACT_ORAL_HINT = re.compile(
-    r"\b(blowjob|bj\b|oral|fellatio|deepthroat|giving\s+head|"
-    r"suck(s|ing)?\s+(his|a|the|an)?\s*(erect\s+)?(penis|dick|cock))\b",
-    re.I,
-)
-_ACT_HANDJOB_HINT = re.compile(
-    r"\b(handjob|hand[\s-]?job|hj\b|stroking\s+(his|a|the)?\s*(erect\s+)?"
-    r"(penis|dick|cock))\b",
-    re.I,
-)
-_ACT_TITJOB_HINT = re.compile(
-    r"\b(titjob|tit[\s-]?job|tittyfuck|paizuri|boobjob|boob[\s-]?job|"
-    r"penis\s+between\s+(her\s+)?breasts|between\s+(her\s+)?breasts)\b",
     re.I,
 )
 # Only true undress intents — bare "boobs/ass" must NOT trigger clothes_remover
@@ -106,22 +89,6 @@ _POSE_REAR_HINT = re.compile(
     r")\b",
     re.I,
 )
-_WET_SHEER_HINT = re.compile(
-    r"\b("
-    r"see[\s-]?through|sheer|"
-    r"wet\s+(shirt|top|tee|t[\s-]?shirt|blouse|fabric|clothes|clothing)|"
-    r"(shirt|top|tee|t[\s-]?shirt|blouse)\s+(is\s+)?(wet|soaked|drenched|clingy)|"
-    r"soaked\s+(shirt|top|tee|t[\s-]?shirt|blouse|fabric)|"
-    r"clingy\s+(wet\s+)?(shirt|top|fabric)|"
-    r"wet\s+look|transparent\s+(shirt|top|fabric)"
-    r")\b",
-    re.I,
-)
-# "no sheer fabric" must not load the see-through LoRA.
-_NEGATED_SHEER = re.compile(
-    r"\b(?:no|not|without|don'?t)\s+(?:see[\s-]?through|sheer|transparent)(?:\s+\w+)?",
-    re.I,
-)
 
 # Stronger denoise when clothing/object edits fall back to Flux Dev img2img.
 _DENOISE_DEGRADED: dict[str, float] = {
@@ -130,13 +97,6 @@ _DENOISE_DEGRADED: dict[str, float] = {
     "quality": 0.78,
     "ultra": 0.85,
 }
-
-
-def _wants_wet_sheer(prompt: str, params: dict | None = None) -> bool:
-    if params and bool(params.get("wet_sheer")):
-        return True
-    text = _NEGATED_SHEER.sub(" ", prompt or "")
-    return bool(_WET_SHEER_HINT.search(text))
 
 
 def _lora_on_disk(filename: str) -> bool:
@@ -217,91 +177,52 @@ def _select_loras(
     undress_fluid = bool(params.get("undress_fluid"))
     pose_edit = bool(params.get("pose_edit")) or bool(_POSE_REAR_HINT.search(prompt))
     pose_undress = bool(params.get("pose_undress"))
-    wet_sheer = _wants_wet_sheer(prompt, params)
     clothed = bool(params.get("clothed_enhance")) or bool(
         _CLOTHED_ENHANCE_HINT.search(prompt)
     )
-    act = str(params.get("act_edit") or "").strip().lower()
-    if not act:
-        if _ACT_ORAL_HINT.search(prompt) and not _ACT_TITJOB_HINT.search(prompt):
-            act = "oral"
-        elif _ACT_HANDJOB_HINT.search(prompt) and not _ACT_ORAL_HINT.search(prompt):
-            act = "handjob"
-        elif _ACT_TITJOB_HINT.search(prompt):
-            act = "titjob"
     undress = (not fluid or undress_fluid or pose_undress) and (not clothed) and (
-        not wet_sheer
-    ) and (
         "clothes_remover" in ids
         or undress_fluid
         or pose_undress
         or bool(_UNDRESS_HINT.search(prompt))
     )
-    # Act edits and clothed pose / wet sheer must never keep clothes_remover
-    if act or (pose_edit and not pose_undress) or wet_sheer:
+    # Clothed pose must never keep clothes_remover
+    if pose_edit and not pose_undress:
         undress = False
     nsfw = (
         bool(params.get("nsfw_edit"))
-        or bool(act)
         or fluid
         or clothed
         or undress
         or pose_edit
-        or wet_sheer
         or bool(_NSFW_HINT.search(prompt))
         or bool(_FLUID_HINT.search(prompt))
     )
-    # Act edits: undress + strong act LoRAs (clothed starts fail acts).
-    if act == "oral":
-        ids = ["clothes_remover", "nsfw_unlock", "oral_pov", "male_anatomy"]
-    elif act == "handjob":
-        ids = [
-            "clothes_remover",
-            "nsfw_unlock",
-            "male_anatomy",
-            "detailed_hands",
-        ]
-    elif act == "titjob":
-        ids = [
-            "clothes_remover",
-            "nsfw_unlock",
-            "breast_enhance",
-            "male_anatomy",
-        ]
-    elif not ids and nsfw:
+    if not ids and nsfw:
         if (undress or undress_fluid or pose_undress) and use_kontext:
             ids = ["clothes_remover", "nsfw_unlock"]
         else:
             ids = ["nsfw_unlock"]
     # Body fluid + undress / nude pose: keep clothes_remover
-    if not act and (undress_fluid or pose_undress):
+    if undress_fluid or pose_undress:
         ids = [x for x in ids if x != "clothes_remover"]
         ids = ["clothes_remover", *ids]
         if "nsfw_unlock" not in ids:
             ids.append("nsfw_unlock")
         if "cof" not in ids:
             ids.append("cof")
-    # Face-only fluid / clothed size-up / clothed pose / wet sheer
-    elif not act and (fluid or clothed or wet_sheer or (pose_edit and not pose_undress)):
+    # Face-only fluid / clothed size-up / clothed pose
+    elif fluid or clothed or (pose_edit and not pose_undress):
         ids = [x for x in ids if x != "clothes_remover"]
         if "nsfw_unlock" not in ids:
             ids.append("nsfw_unlock")
         # Mild COF helps slimy ropes; high weights → opaque paint mask.
         if fluid and not undress_fluid and "cof" not in ids:
             ids.append("cof")
-        if wet_sheer:
-            import os as _os_wet_lora
-
-            see_w = float(_os_wet_lora.environ.get("WET_SEE_THROUGH_STRENGTH", "0.70") or 0.70)
-            wet_w = float(_os_wet_lora.environ.get("WET_SHIRT_STRENGTH", "0.85") or 0.85)
-            if see_w > 0.01 and "see_through" not in ids:
-                ids.append("see_through")
-            if wet_w > 0.01 and "wet_shirt" not in ids:
-                ids.append("wet_shirt")
     # Kontext undress: clothes_remover first, then unlock
-    elif not act and use_kontext and undress and "clothes_remover" not in ids:
+    elif use_kontext and undress and "clothes_remover" not in ids:
         ids = ["clothes_remover", *[x for x in ids if x != "clothes_remover"]]
-    if clothed and not act and not wet_sheer:
+    if clothed:
         labels = {
             str(t.get("label") or "")
             for t in (getattr(plan, "targets", None) or [])
@@ -326,18 +247,14 @@ def _select_loras(
             missing.append(str(lid))
     strengths = None
     if nsfw:
-        # Clothed keep-outfit: 0.55 (frozen v2). Act/undress/fluid/pose: 0.95.
+        # Clothed keep-outfit: 0.55 (frozen v2). Undress/fluid/pose: 0.95.
         unlock_w = (
-            1.05
-            if wet_sheer
+            0.55
+            if clothed
             else (
-                0.55
-                if clothed and not act
-                else (
-                    0.95
-                    if (fluid or undress_fluid or pose_edit or act)
-                    else 0.90
-                )
+                0.95
+                if (fluid or undress_fluid or pose_edit)
+                else 0.90
             )
         )
         # Override: KEEP_OUTFIT_UNLOCK_STRENGTH (clothed / keep-outfit only).
@@ -353,16 +270,8 @@ def _select_loras(
         strengths = {
             "clothes_remover": remover_w,
             "nsfw_unlock": unlock_w,
-            # Mild COF for face fluid (slimy ropes); high → opaque paint.
-            "cof": 0.95 if undress_fluid else 0.58,
-            "see_through": float(
-                __import__("os").environ.get("WET_SEE_THROUGH_STRENGTH", "0.70")
-                or 0.70
-            ),
-            "wet_shirt": float(
-                __import__("os").environ.get("WET_SHIRT_STRENGTH", "0.85")
-                or 0.85
-            ),
+            # Non-Face Altering v2: start ~0.75 face; high still risks opaque paint.
+            "cof": 0.95 if undress_fluid else 0.75,
             "breast_enhance": float(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
                 or 0.82
@@ -376,21 +285,10 @@ def _select_loras(
                 __import__("os").environ.get("KEEP_OUTFIT_ASS_STRENGTH", "1.35")
                 or 1.35
             ),
-            "oral_pov": 1.05,
-            "male_anatomy": 0.80,
-            "detailed_hands": 0.70,
         }
-        if act:
-            strengths["clothes_remover"] = 0.98
-            strengths["nsfw_unlock"] = 1.0
-            strengths["oral_pov"] = 1.10
-            strengths["male_anatomy"] = 0.85
-            strengths["detailed_hands"] = 0.75
-            strengths["breast_enhance"] = 0.90
     stack = ww.resolve_lora_stack(kept, strengths=strengths)
     # Stash miss list on the function for run_flux_edit tags (avoid silent empty stack).
     _select_loras._last_missing = missing  # type: ignore[attr-defined]
-    _select_loras._last_act = act  # type: ignore[attr-defined]
     return stack
 
 
@@ -663,20 +561,6 @@ def build_edit_prompt(
                     f"{pose_bit}{cam} {body_lock} "
                     f"Same background. Do not undress."
                 )
-        # Wet / see-through shirt: garment stays on, fabric turns sheer
-        elif _wants_wet_sheer(edit):
-            body = (
-                f"{body} "
-                f"Keep the SAME shirt/top — same color, same cut, same neckline, same sleeves, "
-                f"same fabric type. Do not change it into a different outfit. "
-                f"REQUIRED: wet clothes, soaking wet, wet hair, see through clothes, "
-                f"transparent clothes. Soak THIS garment until it clings, shiny water "
-                f"highlights and water droplets, fabric turned translucent so breast shape "
-                f"and nipples clearly show through. "
-                f"Do not output the original dry clothes. Do not make the cloth opaque. "
-                f"Keep the garment ON — do not remove it, do not make her fully nude. "
-                f"Keep the exact same face, hair, pose, framing, and background."
-            )
         # Clothed body size-up: keep outfit on; only reshape curves under fabric.
         elif _CLOTHED_ENHANCE_HINT.search(edit) or task_kind == "keep_outfit":
             focus_bit = focus or "curves"
@@ -823,21 +707,11 @@ async def run_flux_edit(
     undress_fluid = bool(params.get("undress_fluid"))
     pose_edit = bool(params.get("pose_edit")) or bool(_POSE_REAR_HINT.search((prompt or "")))
     pose_undress = bool(params.get("pose_undress"))
-    wet_sheer = _wants_wet_sheer(prompt or "", params)
     clothed = bool(params.get("clothed_enhance")) or bool(
         _CLOTHED_ENHANCE_HINT.search((prompt or ""))
     )
-    act_edit = str(params.get("act_edit") or "").strip().lower()
-    if not act_edit:
-        p = prompt or ""
-        if _ACT_ORAL_HINT.search(p) and not _ACT_TITJOB_HINT.search(p):
-            act_edit = "oral"
-        elif _ACT_HANDJOB_HINT.search(p) and not _ACT_ORAL_HINT.search(p):
-            act_edit = "handjob"
-        elif _ACT_TITJOB_HINT.search(p):
-            act_edit = "titjob"
     keep_outfit = task_kind == "keep_outfit" or (
-        clothed and not wet_sheer and not pose_edit and not act_edit
+        clothed and not pose_edit
     )
     if keep_outfit:
         clothed = True
@@ -850,11 +724,6 @@ async def run_flux_edit(
         denoise = max(float(denoise), 0.88)
     if raw and pose_edit:
         denoise = max(float(denoise), 0.88 if pose_undress else 0.84)
-    if raw and act_edit:
-        denoise = max(float(denoise), 0.94)
-    if raw and wet_sheer:
-        # Lurulf Wet Clothes/Hair works best at high denoise (~0.95) for img2img soak.
-        denoise = max(float(denoise), 0.92)
     if raw and clothed and not keep_outfit:
         denoise = max(float(denoise), 0.80)
     max_side = int(params.get("max_side") or MAX_SIDE_BY_PROFILE.get(pname, 1024))
@@ -870,9 +739,9 @@ async def run_flux_edit(
     use_kontext = _is_kontext_backbone(backbone)
     nsfw_flag = bool(params.get("nsfw_edit")) or bool(
         _NSFW_HINT.search((prompt or ""))
-    ) or fluid or clothed or undress_fluid or pose_edit or wet_sheer or bool(act_edit)
+    ) or fluid or clothed or undress_fluid or pose_edit
     # Soft-refusal on stock Dev is common without NSFW unlock.
-    # Force Kontext for NSFW/wet/pose when the weight may live on the GPU box
+    # Force Kontext for NSFW/pose when the weight may live on the GPU box
     # even if the API catalog still says missing (Render has no local COMFYUI_DIR).
     controlnet_name = _resolve_controlnet_name() if pose_edit else None
     pose_control_bytes = _pose_all_fours_template_bytes() if pose_edit else None
@@ -884,8 +753,6 @@ async def run_flux_edit(
         or clothed
         or undress_fluid
         or pose_edit
-        or wet_sheer
-        or act_edit
     ) and not use_kontext and not keep_outfit:
         try:
             from backend.ai_engine.models.manager import manager as _mm
@@ -906,29 +773,6 @@ async def run_flux_edit(
     if use_pose_control:
         use_kontext = False
         extra_tags.append("pose_controlnet")
-    elif act_edit:
-        # Act LoRAs are Flux-Dev trained; high-denoise img2img reframes better than Kontext.
-        use_kontext = False
-        flux_unet_forced = None
-        denoise = max(float(denoise), 0.94)
-        extra_tags.append("act_i2i_dev")
-    elif wet_sheer:
-        # Wet/see-through LoRAs are Flux-Dev img2img trained. Kontext ReferenceLatent
-        # either barely soaks or swaps the whole top — never use for wet_sheer.
-        use_kontext = False
-        flux_unet_forced = None
-        import os as _os_wet
-
-        d_ov = (_os_wet.environ.get("WET_SHEER_DENOISE") or "").strip()
-        if d_ov:
-            try:
-                denoise = float(d_ov)
-            except ValueError:
-                denoise = max(float(denoise), 0.88)
-        else:
-            # Soft soak: high denoise melts identity / swaps the top.
-            denoise = max(float(denoise), 0.70)
-        extra_tags.append("wet_sheer_i2i")
     elif keep_outfit:
         import os as _os
 
@@ -949,7 +793,7 @@ async def run_flux_edit(
             extra_tags.append("keep_outfit_kontext")
             if not flux_unet_forced:
                 flux_unet_forced = KONTEXT_UNET
-    elif clothed and not wet_sheer:
+    elif clothed:
         # Non-keep clothed size-up still uses masked i2i.
         use_kontext = False
         extra_tags.append("clothed_i2i")
@@ -985,21 +829,12 @@ async def run_flux_edit(
     if use_pose_control:
         # High denoise so ControlNet pose can reshape; identity from start latent.
         denoise = min(max(float(denoise), 0.86), 0.92)
-    if wet_sheer and not use_kontext:
-        # Allow probe override; default soft soak window (too high → clothing swap).
-        import os as _os_wet_cap
-
-        if (_os_wet_cap.environ.get("WET_SHEER_DENOISE") or "").strip():
-            extra_tags.append("wet_sheer_cap")
-        else:
-            denoise = min(max(float(denoise), 0.65), 0.78)
-            extra_tags.append("wet_sheer_cap")
     # Clothed enhance: chest-only noise mask. Volume + tighter cloth need room
     # above 0.70; face/hands are restored in post.
     if keep_outfit and not use_kontext:
         denoise = min(max(float(denoise_override or denoise or 0.80), 0.76), 0.86)
         extra_tags.append("keep_outfit_reshape_cap")
-    elif clothed and not use_kontext and not wet_sheer:
+    elif clothed and not use_kontext:
         denoise = min(max(float(denoise), 0.80), 0.86)
         extra_tags.append("clothed_enhance_cap")
 
@@ -1032,7 +867,7 @@ async def run_flux_edit(
         "incomplete clothes, "
         "frayed hem, unfinished shirt, different neckline, "
         "lingerie only, see-through clothes, translucent shirt, poke-through nipples, "
-        "wet clingy nipples, "
+        "clingy fabric nipples, "
         "flat chest, small bust, no cleavage, unchanged chest, loose baggy top, "
         "recolored shirt, different colored top, "
         "nipple outline, areola through clothes, see-through knit, hard vertical cleavage slit, "
@@ -1042,15 +877,6 @@ async def run_flux_edit(
         "deformed anatomy, stretched ribs, duplicated body, melted armpit, "
         "different person, face swap, changed identity, wrong face, "
         "different outfit, cardigan, clothing swap"
-    )
-    _WET_SHEER_NEG = (
-        "dry shirt, dry clothes, original dry fabric, unchanged clothes, "
-        "thick fabric, opaque, opaque dry cotton, opaque wet fabric, "
-        "black dress, cocktail dress, evening gown, little black dress, "
-        "latex dress, leather dress, new outfit, clothing swap, different clothes, "
-        "dress instead of shirt, fully nude, naked, removed shirt, no clothes, "
-        "undress, clothes removed, bare chest without fabric, different person, "
-        "face swap, changed identity, wrong face"
     )
     _POSE_NEG = (
         "different person, face swap, changed identity, wrong face, morphing face, "
@@ -1062,26 +888,9 @@ async def run_flux_edit(
         "kneeling upright, sitting back, crouching sit, yoga sit, seated portrait, "
         "upright torso, sitting on the floor"
     )
-    _ACT_NEG = (
-        "different person, face swap, changed identity, wrong face, morphing face, "
-        "identity drift, beautified face, elongated tongue, giant tongue, "
-        "tongue stretching, cartoon tongue, ice cream, popsicle, food in mouth, "
-        "melted fingers, extra fingers, blob hands, missing fingers, "
-        "fully clothed, saree intact, unchanged outfit, standing full body only, "
-        "no penis, censored, mosaic, floating anatomy, disembodied body part, "
-        "extra people, crowd, watermark"
-    )
     if fluid:
         negative = ", ".join(
             x for x in ((negative or "").strip(), _FLUID_NEG) if x
-        )
-    elif wet_sheer:
-        negative = ", ".join(
-            x for x in ((negative or "").strip(), _WET_SHEER_NEG) if x
-        )
-    elif act_edit:
-        negative = ", ".join(
-            x for x in ((negative or "").strip(), _ACT_NEG) if x
         )
     elif pose_edit and not pose_undress:
         negative = ", ".join(
@@ -1168,43 +977,6 @@ async def run_flux_edit(
             low = final_prompt.lower()
             if not any(k in low for k in ("nude", "naked", "undress", "no clothes", "remove")):
                 final_prompt = f"remove clothes, nude. {final_prompt}"
-        if any(fn.lower() == "flux_pov_a_v1.safetensors" for fn, _, _ in lora_stack):
-            # Training trigger for getphat POV oral LoRA (filename is generic).
-            if "bl0j0" not in final_prompt.lower():
-                final_prompt = (
-                    "bl0j0, girl, blowjob, pov, penis, lips wrapped around erect penis. "
-                    + final_prompt
-                )
-        if any(fn.lower() == "flux_anatomy_m_v1.safetensors" for fn, _, _ in lora_stack):
-            if "very detailed erected" not in final_prompt.lower():
-                final_prompt = (
-                    "very detailed erected penis. " + final_prompt
-                )
-        if any(fn.lower() == "flux_hands_detail_v1.safetensors" for fn, _, _ in lora_stack):
-            if "detailed hands" not in final_prompt.lower():
-                final_prompt = "detailed hands. " + final_prompt
-        act_tag = getattr(_select_loras, "_last_act", "") or ""
-        if act_tag:
-            extra_tags.append(f"act:{act_tag}")
-            # Reinforce undress + act composition when remover is loaded.
-            if any("clothes_remover" in fn.lower() for fn, _, _ in lora_stack):
-                low = final_prompt.lower()
-                if "remove clothes" not in low and "nude" not in low:
-                    final_prompt = f"remove clothes, nude. {final_prompt}"
-            if act_tag == "oral" and "kneeling" not in final_prompt.lower():
-                final_prompt = (
-                    "close-up kneeling POV blowjob looking up at camera. "
-                    + final_prompt
-                )
-            elif act_tag == "handjob" and "stroking" not in final_prompt.lower():
-                final_prompt = (
-                    "both hands stroking erect penis, POV. " + final_prompt
-                )
-            elif act_tag == "titjob" and "between breasts" not in final_prompt.lower():
-                final_prompt = (
-                    "paizuri, penis between breasts, breasts squeezed together. "
-                    + final_prompt
-                )
     else:
         missing = list(getattr(_select_loras, "_last_missing", []) or [])
         if keep_outfit or clothed:
@@ -1247,8 +1019,6 @@ async def run_flux_edit(
     denoise_cap = float(getattr(settings, "image_denoise_cap", 0.85) or 0.85)
     if degraded:
         denoise_cap = max(denoise_cap, 0.90)
-    if wet_sheer:
-        denoise_cap = max(denoise_cap, 0.95)
     if clothed:
         denoise_cap = max(denoise_cap, 0.90)
     if keep_outfit:
@@ -1262,8 +1032,6 @@ async def run_flux_edit(
         g = 3.0 if raw else 2.5
         if fluid:
             g = 3.4  # follow shallow/opalescent material, not a solid white fill
-        if wet_sheer:
-            g = 3.6  # LoRAs drive wet/sheer; high CFG was swapping in a black dress
         if pose_edit:
             g = 4.0  # full body pose change; 3.0 only kneel-sits
         hip_job = _keep_outfit_hip_job(prompt or "") if (clothed or keep_outfit) else False
@@ -1503,14 +1271,7 @@ async def run_flux_edit(
         else:
             _garment_png = None
             _edit_mask_png = None
-            if wet_sheer:
-                from backend.ai_engine.post.face_lock import bust_inpaint_mask_png
-
-                # Soak the top only — keeps face/background from high-denoise drift.
-                mask_bytes = bust_inpaint_mask_png(work_bytes, settings=settings)
-                extra_tags.append("wet_chest_inpaint")
-                _edit_mask_png = mask_bytes
-            elif clothed:
+            if clothed:
                 from backend.ai_engine.post.face_lock import (
                     bust_inpaint_mask_png,
                     hip_inpaint_mask_png,
@@ -1567,18 +1328,7 @@ async def run_flux_edit(
                 )
             else:
                 raise
-        if wet_sheer and data:
-            from backend.ai_engine.post.face_lock import restore_original_face
-
-            data = restore_original_face(source_bytes, data)
-            extra_tags.append("face_lock")
-        elif act_edit and data:
-            from backend.ai_engine.post.face_lock import restore_original_face
-
-            # High denoise act i2i melts identity — stamp start face back.
-            data = restore_original_face(source_bytes, data)
-            extra_tags.append("face_lock")
-        elif clothed and data:
+        if clothed and data:
             from backend.ai_engine.post.face_lock import (
                 restore_original_face,
                 restore_outside_chest,
