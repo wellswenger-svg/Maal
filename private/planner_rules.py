@@ -378,10 +378,8 @@ def classify(req: "GenerateRequest") -> RuleResult:
                 },
             )
         label = _fluid_target_label(text)
-        # Milder denoise when the Dev img2img fallback is used; Kontext ignores denoise.
-        # Face/lips stay lower so the model overlays translucent fluid instead of
-        # painting a solid white mask over the face.
-        denoise = 0.60 if label in ("face", "lips") else 0.68
+        # Milder denoise — face/lips overlay only; clothes stay locked via mask.
+        denoise = 0.45 if label in ("face", "lips") else 0.55
         return RuleResult(
             task_type="edit.general_instruction",
             confidence=0.93,

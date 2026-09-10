@@ -18,10 +18,10 @@ def register(add) -> None:
     )
     add(
         "lora.cof_flux",
-        filename="flux_facial_fluid_v1.safetensors",
+        filename="flux_kontext_fluid_v1.safetensors",
         role="lora",
         status="missing",
-        download_source="https://civitai.com/models/858262",
+        download_source="https://civitai.com/models/1750558/cumifier-kontext",
     )
     add(
         "lora.bust_enhance_flux",

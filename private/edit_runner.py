@@ -270,8 +270,8 @@ def _select_loras(
         strengths = {
             "clothes_remover": remover_w,
             "nsfw_unlock": unlock_w,
-            # Non-Face Altering v2: start ~0.75 face; high still risks opaque paint.
-            "cof": 0.95 if undress_fluid else 0.75,
+            # Mild fluid cue — high strength melts face/hands inside the mask.
+            "cof": 0.70 if undress_fluid else 0.45,
             "breast_enhance": float(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
                 or 0.82
@@ -467,21 +467,13 @@ def build_edit_prompt(
                 focus_l = (focus or "face").lower()
                 if focus_l in ("face", "facial"):
                     fluid_bit = (
-                        "slimy translucent whitish semen on her face — denser cream-white "
-                        "gooey stringy wet gel in uneven ropes on forehead, eyelids, cheeks, "
-                        "nose, lips, and chin with sticky drips hanging from nose and chin, plus "
-                        "natural uneven drips on chest/clothes. On hair: keep her exact rich dark "
-                        "hair color (do not dull, gray, bleach, or desaturate it) and add only "
-                        "inconsistent small amounts of slimy semen in one crown/hairline patch — "
-                        "scattered beads and thin wet films so local strands look wet/slimy with "
-                        "real hair color showing between drips. Never a gray wash or white blob on "
-                        "hair, never melted hair. CRITICAL: mostly translucent so skin, eyes, and cheeks "
-                        "clearly show through on thin films, but thicker ropes/beads/drips stay "
-                        "milky cream-white and clearly visible with wet speculars. Soft wet edges — no "
-                        "cartoon outline, no sticker rim, no blue fringe, no gray digital outline, "
-                        "no wispy smoke. "
-                        "Never flat matte opaque white paint covering the midface, "
-                        "acrylic, chalk, or toothpaste."
+                        "a light natural facial of translucent whitish semen — a few "
+                        "uneven glossy droplets and thin wet films on forehead, cheeks, "
+                        "nose bridge, lips, and chin only, plus 1–2 small drips onto the "
+                        "upper neck / blouse edge. Skin, eyes, brows, and expression must "
+                        "stay fully visible and unchanged through thin films. Keep exact "
+                        "hair color and strands. Do not cover the whole face, do not melt "
+                        "or remake features, do not recolor or reshape clothes."
                     )
                 elif focus_l in ("lips", "mouth"):
                     fluid_bit = (
@@ -799,12 +791,20 @@ async def run_flux_edit(
         extra_tags.append("clothed_i2i")
         if not flux_unet_forced:
             flux_unet_forced = KONTEXT_UNET
+    elif fluid and not undress_fluid:
+        # Face/body fluid: Cumifier is Flux.1 Kontext — run img2img on Kontext
+        # UNET (same pattern as clothed_i2i). ReferenceLatent denoise=1 rewrites face.
+        use_kontext = False
+        extra_tags.append("fluid_i2i")
+        if not flux_unet_forced:
+            flux_unet_forced = KONTEXT_UNET
     degraded = (
         (not use_kontext)
         and _preferred_wants_kontext(workflow)
         and not use_pose_control
         and "clothed_i2i" not in extra_tags
         and "keep_outfit_i2i" not in extra_tags
+        and "fluid_i2i" not in extra_tags
     )
     if degraded:
         extra_tags.append(_DEGRADED_WARN)
@@ -813,9 +813,9 @@ async def run_flux_edit(
             and not fluid
         ):
             denoise = max(denoise, _DENOISE_DEGRADED.get(pname, 0.72))
-    # Cap Dev img2img strength for face-only fluid so identity survives the fallback path
+    # Fluid img2img: very low denoise; post composites gel onto intact start photo.
     if fluid and not undress_fluid and not use_kontext:
-        denoise = min(float(denoise), 0.72)
+        denoise = min(max(float(denoise_override or denoise or 0.40), 0.32), 0.46)
         extra_tags.append("fluid_identity_cap")
     if undress_fluid and not use_kontext:
         denoise = min(max(float(denoise), 0.88), 0.95)
@@ -1025,13 +1025,16 @@ async def run_flux_edit(
         denoise_cap = max(denoise_cap, 0.88)
     if use_pose_control:
         denoise_cap = max(denoise_cap, 0.92)
+    if fluid and not undress_fluid:
+        denoise_cap = min(denoise_cap, 0.55)
 
     client = ComfyClient(settings)
     if use_kontext:
         # Slightly higher guidance in raw mode for tighter instruction follow
         g = 3.0 if raw else 2.5
         if fluid:
-            g = 3.4  # follow shallow/opalescent material, not a solid white fill
+            # Cumifier Kontext recommends guidance 1.5–2.5 (not 3.4+).
+            g = 2.5
         if pose_edit:
             g = 4.0  # full body pose change; 3.0 only kneel-sits
         hip_job = _keep_outfit_hip_job(prompt or "") if (clothed or keep_outfit) else False
@@ -1166,8 +1169,12 @@ async def run_flux_edit(
             g = 3.6
         elif clothed:
             g = 4.0
+        elif fluid:
+            # Cumifier Kontext: guidance 1.5–2.5 on img2img + Kontext UNET.
+            g = 2.5
         mask_bytes = None
         wrap_mode: Optional[str] = None
+        # Fluid + clothed i2i: wrap_preserve helps keep non-edit regions stable.
         wrap_preserve = bool(fluid or clothed) and not use_pose_control and not keep_outfit
         if keep_outfit:
             wrap_mode = "fabric"
@@ -1271,7 +1278,13 @@ async def run_flux_edit(
         else:
             _garment_png = None
             _edit_mask_png = None
-            if clothed:
+            if fluid and not undress_fluid:
+                from backend.ai_engine.post.face_lock import fluid_face_inpaint_mask_png
+
+                mask_bytes = fluid_face_inpaint_mask_png(work_bytes)
+                _edit_mask_png = mask_bytes
+                extra_tags.append("fluid_face_inpaint")
+            elif clothed:
                 from backend.ai_engine.post.face_lock import (
                     bust_inpaint_mask_png,
                     hip_inpaint_mask_png,
@@ -1345,6 +1358,16 @@ async def run_flux_edit(
             if _edit_mask_png:
                 extra_tags.append("soft_garment_restore")
             data = _maybe_opaque_bust_apex(source_bytes, data, extra_tags)
+        elif fluid and not undress_fluid and data:
+            from backend.ai_engine.post.face_lock import composite_fluid_highlights
+
+            data = composite_fluid_highlights(
+                source_bytes,
+                data,
+                edit_mask_png=_edit_mask_png,
+            )
+            extra_tags.append("fluid_region_lock")
+            extra_tags.append("fluid_highlight_composite")
     if extra_tags:
         model_label = f"{model_label}|{'|'.join(extra_tags)}"
     return data, content_type, "img", model_label

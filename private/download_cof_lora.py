@@ -1,7 +1,10 @@
-"""Download Flux facial-fluid LoRA into the Comfy shared loras folder.
+"""Download Flux Kontext fluid LoRA into the Comfy shared loras folder.
 
-Primary: Non-Face Altering v2 (Civitai 858262) → flux_facial_fluid_v1.safetensors
-Rollback kept on disk: COF_v6_rollback.safetensors (old mawedesign COF v6)
+Primary: Cumifier Kontext v1 (Civitai 1750558) → flux_kontext_fluid_v1.safetensors
+  Base: Flux.1 Kontext (instruction edit / img2img) — matches fluid edit_graph=kontext.
+Rollback kept on disk:
+  - flux_facial_fluid_v1.safetensors (old Flux.1 D Non-Face Altering v2)
+  - COF_v6_rollback.safetensors (mawedesign COF v6)
 
 Does not commit weights. Does not generate.
 """
@@ -15,16 +18,22 @@ from pathlib import Path
 from huggingface_hub import hf_hub_download
 
 OUT = Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras")
-LOCAL = "flux_facial_fluid_v1.safetensors"
-EXPECTED_SHA = "e16db828c4c621f12937ef92504e713508f7cf60d792229c03b51795bc1037bb"
-MIN_BYTES = 100 * 1024 * 1024
+LOCAL = "flux_kontext_fluid_v1.safetensors"
+EXPECTED_SHA = "e3687deea8cb4b3c034534a9d9c773e16603182d63dd4cf29ff526afe5ee7cac"
+MIN_BYTES = 500 * 1024 * 1024
 
 SOURCES = (
+    ("Chroma111/CivitAI-Archive", "1750558/1981186/add_cum_000010400.safetensors"),
+)
+
+# Keep previous Flux.1 D facial LoRA available as rollback (do not re-download if present).
+LEGACY_FACIAL = "flux_facial_fluid_v1.safetensors"
+LEGACY_SHA = "e16db828c4c621f12937ef92504e713508f7cf60d792229c03b51795bc1037bb"
+LEGACY_SOURCES = (
     ("Keltezaa/cumonfacelorav2", "cumonfacelorav2.safetensors"),
     ("Chroma111/CivitAI-Archive-2", "858262/1032060/cumonfacelorav2.safetensors"),
 )
 
-# Optional: keep old COF v6 available as rollback
 ROLLBACK_SOURCES = (
     (
         "Chroma111/CivitAI-Archive",
@@ -69,6 +78,24 @@ def main() -> int:
                 print(f"FAIL {repo}: {exc}")
         else:
             print(f"FAIL {LOCAL}: no source worked")
+
+    # Park legacy Flux.1 D facial if missing (rollback only).
+    legacy = OUT / LEGACY_FACIAL
+    if legacy.exists() and legacy.stat().st_size > 100_000_000:
+        print(f"HAVE {LEGACY_FACIAL} rollback ({legacy.stat().st_size // (1024 * 1024)} MB)")
+    else:
+        for repo, remote in LEGACY_SOURCES:
+            print(f"GET  legacy {repo} :: {remote}")
+            try:
+                cached = hf_hub_download(repo_id=repo, filename=remote)
+                if _sha256(Path(cached)) != LEGACY_SHA:
+                    print("SKIP legacy sha mismatch")
+                    continue
+                shutil.copy2(cached, legacy)
+                print(f"OK   {LEGACY_FACIAL} rollback")
+                break
+            except Exception as exc:
+                print(f"FAIL legacy {repo}: {exc}")
 
     for repo, remote, local_name in ROLLBACK_SOURCES:
         rdest = OUT / local_name
