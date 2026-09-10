@@ -92,6 +92,17 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "2.2-I2V Reveal Penis_000003000_high_noise.safetensors",
         ),
     ),
+    # F4C3SPL4SH (K3NK) — facial cumshot; author: high 1.0 + low 1.4, trigger f4c3spl4sh
+    LoraSpec(
+        "cumshot_high",
+        "high",
+        1.00,
+        (
+            "Wan2.2_I2V_Cumshot_HIGH.safetensors",
+            "wan22-f4c3spl4sh-100epoc-high-k3nk.safetensors",
+            "Cumshot_LoRA_HIGH.safetensors",
+        ),
+    ),
     LoraSpec(
         "dr34ml4y_high",
         "high",
@@ -161,9 +172,10 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "cumshot_low",
         "low",
-        0.55,
+        1.40,
         (
             "Cumshot_LoRA.safetensors",
+            "Wan2.2_I2V_Cumshot_LOW.safetensors",
             "wan22-f4c3spl4sh-154epoc-low-k3nk.safetensors",
         ),
     ),
@@ -485,7 +497,7 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
             return False
         if spec_id.startswith("dr34ml4y"):
             return False
-        if spec_id == "cumshot_low" and not cumshot:
+        if spec_id.startswith("cumshot") and not cumshot:
             return False
 
     # Penetration-only: skip oral blowjob / oral-insertion LoRAs.
@@ -499,11 +511,11 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
             return False
         if spec_id.startswith("female_gen"):
             return False
-        if spec_id == "cumshot_low" and not cumshot:
+        if spec_id.startswith("cumshot") and not cumshot:
             return False
 
     # Cumshot LoRA only when finish is explicitly requested (not all Sex runs).
-    if spec_id == "cumshot_low":
+    if spec_id.startswith("cumshot"):
         return cumshot
 
     return True

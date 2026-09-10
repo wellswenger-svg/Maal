@@ -190,6 +190,7 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
         self.assertNotIn("dr34ml4y_high", stack.applied_ids)
+        self.assertNotIn("cumshot_high", stack.applied_ids)
         self.assertNotIn("cumshot_low", stack.applied_ids)
 
     def test_deepthroat_kind_loads_deepthroat_lora(self) -> None:
@@ -283,7 +284,31 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("penis_lora_high", stack.applied_ids)
         self.assertNotIn("deepthroat_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
+        self.assertNotIn("cumshot_high", stack.applied_ids)
         self.assertNotIn("cumshot_low", stack.applied_ids)
+
+    def test_cumshot_loads_high_and_low(self) -> None:
+        available = {
+            "PENISLORA_22_i2v_HIGH_e320.safetensors",
+            "PENISLORA_22_i2v_LOW_e496.safetensors",
+            "Wan2.2_I2V_Cumshot_HIGH.safetensors",
+            "Cumshot_LoRA.safetensors",
+            "male_genitalia_enhancer_high.safetensors",
+            "male_genitalia_enhancer_low.safetensors",
+        }
+        with patch.object(ls, "_lora_dirs", return_value=[]):
+            stack = ls.resolve_video_lora_stack(
+                include_optional=False,
+                available_names=available,
+                nsfw=True,
+                motion_kinds=["nsfw_action", "cumshot"],
+            )
+        self.assertIn("cumshot_high", stack.applied_ids)
+        self.assertIn("cumshot_low", stack.applied_ids)
+        high_map = {f: s for f, s in stack.high}
+        low_map = {f: s for f, s in stack.low}
+        self.assertAlmostEqual(high_map["Wan2.2_I2V_Cumshot_HIGH.safetensors"], 1.0)
+        self.assertAlmostEqual(low_map["Cumshot_LoRA.safetensors"], 1.4)
 
     def test_pose_lora_alias_filename(self) -> None:
         available = {

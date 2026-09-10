@@ -92,6 +92,9 @@ class Phase6MotionTests(unittest.TestCase):
         m = extract_motion_hints("bj then cumshot facial")
         self.assertIn("oral", m["motion_kinds"])
         self.assertIn("cumshot", m["motion_kinds"])
+        text = scaffold_i2v_prompt("bj then cumshot facial", m)
+        self.assertIn("f4c3spl4sh", text.lower())
+        self.assertIn("PENISLORA", text)
 
     def test_profile_table(self) -> None:
         d = profile_video_params("draft")

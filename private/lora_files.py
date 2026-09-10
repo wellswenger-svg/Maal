@@ -23,7 +23,7 @@ LORA_DEFAULT_STRENGTH = {
     "clothes_remover": 0.85,
     "content_unlock": 0.80,
     "nsfw_unlock": 0.80,
-    # Stronger gel on Dev img2img; identity via face mask + highlight composite.
+    # Modest gel on Dev img2img; identity via gel-only highlight composite.
     "cof": 0.88,
     # Clothed reshape (Flux Kontext). Civitai 1802814 → flux_kontext_figure_reshape_v1.
     "bust_enhance": 0.82,

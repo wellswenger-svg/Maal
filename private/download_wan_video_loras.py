@@ -52,6 +52,11 @@ DOWNLOADS: list[tuple[str, str, str]] = [
     ),
     (
         "onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",
+        "wan22-f4c3spl4sh-100epoc-high-k3nk.safetensors",
+        "Wan2.2_I2V_Cumshot_HIGH.safetensors",
+    ),
+    (
+        "onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",
         "wan22-f4c3spl4sh-154epoc-low-k3nk.safetensors",
         "Cumshot_LoRA.safetensors",
     ),

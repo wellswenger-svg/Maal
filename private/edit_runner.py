@@ -278,6 +278,7 @@ def _select_loras(
         if cof_str:
             try:
                 cof_w = float(cof_str)
+
             except ValueError:
                 pass
         strengths = {
@@ -806,9 +807,17 @@ async def run_flux_edit(
             flux_unet_forced = KONTEXT_UNET
     elif fluid and not undress_fluid:
         # Face fluid: Flux.1 D LoRAs on Dev img2img (not Kontext UNET).
+        # Dedistilled UNET via FLUID_FLUX_UNET unlocks NFA v2 heavy coverage.
+        import os as _os_fluid_unet
+
         use_kontext = False
-        flux_unet_forced = "flux1-dev-fp8.safetensors"
+        flux_unet_forced = (
+            (_os_fluid_unet.environ.get("FLUID_FLUX_UNET") or "").strip()
+            or "flux1-dev-fp8.safetensors"
+        )
         extra_tags.append("fluid_i2i")
+        if "dedistill" in flux_unet_forced.lower():
+            extra_tags.append("fluid_dedistilled")
     degraded = (
         (not use_kontext)
         and _preferred_wants_kontext(workflow)
@@ -824,10 +833,17 @@ async def run_flux_edit(
             and not fluid
         ):
             denoise = max(denoise, _DENOISE_DEGRADED.get(pname, 0.72))
-    # Fluid img2img: mid denoise for sharper gel; face/clothes locked by mask + composite.
+    # Fluid img2img: modest denoise + gel paste. Dedistilled can go a bit higher.
     if fluid and not undress_fluid and not use_kontext:
-        denoise = min(max(float(denoise_override or denoise or 0.55), 0.48), 0.62)
+        import os as _os_dn
+
+        unet_n = str(flux_unet_forced or _os_dn.environ.get("FLUID_FLUX_UNET") or "")
+        if "dedistill" in unet_n.lower():
+            denoise = min(max(float(denoise_override or denoise or 0.58), 0.50), 0.68)
+        else:
+            denoise = min(max(float(denoise_override or denoise or 0.48), 0.42), 0.55)
         extra_tags.append("fluid_identity_cap")
+
     if undress_fluid and not use_kontext:
         denoise = min(max(float(denoise), 0.88), 0.95)
         extra_tags.append("undress_fluid_cap")
@@ -1040,7 +1056,8 @@ async def run_flux_edit(
     if use_pose_control:
         denoise_cap = max(denoise_cap, 0.92)
     if fluid and not undress_fluid:
-        denoise_cap = min(max(denoise_cap, 0.65), 0.72)
+        denoise_cap = min(max(denoise_cap, 0.55), 0.62)
+
 
     client = ComfyClient(settings)
     if use_kontext:
@@ -1184,8 +1201,16 @@ async def run_flux_edit(
         elif clothed:
             g = 4.0
         elif fluid:
-            # Cumifier Kontext: guidance 1.5–2.5 on img2img + Kontext UNET.
-            g = 2.5
+            # Distilled Dev: mild guidance. Dedistilled: author Real CFG ~8 for COF avalanche.
+            import os as _os_g
+
+            unet_name = str(flux_unet_forced or "")
+            if "dedistill" in unet_name.lower() or (
+                _os_g.environ.get("FLUID_FLUX_UNET") or ""
+            ).lower().find("dedistill") >= 0:
+                g = float((_os_g.environ.get("FLUID_GUIDANCE") or "6.0").strip() or 6.0)
+            else:
+                g = 2.5
         mask_bytes = None
         wrap_mode: Optional[str] = None
         # Fluid + clothed i2i: wrap_preserve helps keep non-edit regions stable.
@@ -1375,6 +1400,7 @@ async def run_flux_edit(
         elif fluid and not undress_fluid and data:
             from backend.ai_engine.post.face_lock import composite_fluid_highlights
 
+            # Start face stays pixel-perfect; only whitish gel pixels are pasted.
             data = composite_fluid_highlights(
                 source_bytes,
                 data,
@@ -1382,6 +1408,7 @@ async def run_flux_edit(
             )
             extra_tags.append("fluid_region_lock")
             extra_tags.append("fluid_highlight_composite")
+
     if extra_tags:
         model_label = f"{model_label}|{'|'.join(extra_tags)}"
     return data, content_type, "img", model_label

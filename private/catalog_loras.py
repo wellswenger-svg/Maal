@@ -111,7 +111,28 @@ def register(add) -> None:
         download_source="https://huggingface.co/lopi999/Wan2.2-DR34ML4Y-AIO_NSFW-LoRA",
     )
     add(
+        "lora.video_finish_high",
+        filename="Wan2.2_I2V_Cumshot_HIGH.safetensors",
+        role="lora",
+        status="missing",
+        download_source="https://huggingface.co/onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",
+    )
+    add(
         "lora.video_finish_low",
+        filename="Cumshot_LoRA.safetensors",
+        role="lora",
+        status="missing",
+        download_source="https://huggingface.co/onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",
+    )
+    add(
+        "lora.video_cumshot_high",
+        filename="Wan2.2_I2V_Cumshot_HIGH.safetensors",
+        role="lora",
+        status="missing",
+        download_source="https://huggingface.co/onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",
+    )
+    add(
+        "lora.video_cumshot_low",
         filename="Cumshot_LoRA.safetensors",
         role="lora",
         status="missing",

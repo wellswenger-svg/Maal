@@ -212,6 +212,10 @@ def scaffold_i2v_prompt(
                 f"{edit}. Then jumpcut to the same woman kneeling in front of him "
                 "giving a blowjob, looking up, holding his penis with both hands"
             )
+    if nsfw and "cumshot" in kinds_l:
+        # F4C3SPL4SH (K3NK) trained word — required for reliable facial finish.
+        if not re.search(r"\bf4c3spl4sh\b", edit, re.I):
+            edit = f"f4c3spl4sh, {edit}"
     edit = edit.rstrip(". ")
 
     if nsfw:
