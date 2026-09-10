@@ -8,10 +8,9 @@ Image acts (BJ/HJ/titjob) and wet/sheer shirt paths were removed — use Wan I2V
 LORA_FILES = {
     "clothes_remover": "clothes_remover_v0.safetensors",
     "content_unlock": "aidmaNSFWunlock-FLUX-V0.2.safetensors",
-    # Cumifier Kontext v1 (Civitai 1750558) — Flux.1 Kontext img2img / instruction edit.
-    # Only for image fluid path (Kontext UNET). Not Wan video. Not Flux.1 D txt2img.
-    # Rollback: flux_facial_fluid_v1.safetensors (Flux.1 D) / COF_v6_rollback.safetensors
-    "cof": "flux_kontext_fluid_v1.safetensors",
+    # Flux.1 D Non-Face Altering v2 (Civitai 858262) — Dev img2img + face mask.
+    # A/B alt: COF_v6_rollback.safetensors. Kontext Cumifier parked as flux_kontext_fluid_v1.
+    "cof": "flux_facial_fluid_v1.safetensors",
     "bust_enhance": "flux_kontext_figure_reshape_v1.safetensors",
     "nsfw_unlock": "aidmaNSFWunlock-FLUX-V0.2.safetensors",
     "breast_enhance": "flux_kontext_figure_reshape_v1.safetensors",
@@ -24,8 +23,8 @@ LORA_DEFAULT_STRENGTH = {
     "clothes_remover": 0.85,
     "content_unlock": 0.80,
     "nsfw_unlock": 0.80,
-    # Author ~1.0 is too hot for identity; face overlay stays mild.
-    "cof": 0.45,
+    # Stronger gel on Dev img2img; identity via face mask + highlight composite.
+    "cof": 0.88,
     # Clothed reshape (Flux Kontext). Civitai 1802814 → flux_kontext_figure_reshape_v1.
     "bust_enhance": 0.82,
     "breast_enhance": 0.82,

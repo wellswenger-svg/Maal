@@ -379,7 +379,7 @@ def classify(req: "GenerateRequest") -> RuleResult:
             )
         label = _fluid_target_label(text)
         # Milder denoise — face/lips overlay only; clothes stay locked via mask.
-        denoise = 0.45 if label in ("face", "lips") else 0.55
+        denoise = 0.55 if label in ("face", "lips") else 0.60
         return RuleResult(
             task_type="edit.general_instruction",
             confidence=0.93,

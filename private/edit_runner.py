@@ -170,6 +170,13 @@ def _select_loras(
     from backend import workflows_wan as ww
 
     lora_files = _refresh_lora_map()
+    # A/B / ops override without rewriting private/lora_files.py
+    import os as _os_cof
+
+    cof_file = (_os_cof.environ.get("FLUID_COF_FILE") or "").strip()
+    if cof_file:
+        lora_files["cof"] = cof_file
+    cof_str = (_os_cof.environ.get("FLUID_COF_STRENGTH") or "").strip()
     params = getattr(plan, "params_hints", None) or {} if plan else {}
     ids = list(params.get("loras") or [])
     prompt = user_prompt or ""
@@ -267,11 +274,17 @@ def _select_loras(
             except ValueError:
                 pass
         remover_w = 0.98 if (undress_fluid or pose_undress) else 0.95
+        cof_w = 0.95 if undress_fluid else 0.88
+        if cof_str:
+            try:
+                cof_w = float(cof_str)
+            except ValueError:
+                pass
         strengths = {
             "clothes_remover": remover_w,
             "nsfw_unlock": unlock_w,
-            # Mild fluid cue — high strength melts face/hands inside the mask.
-            "cof": 0.70 if undress_fluid else 0.45,
+            # Flux.1 D facial LoRAs: stronger than Cumifier; mask+composite holds identity.
+            "cof": cof_w,
             "breast_enhance": float(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
                 or 0.82
@@ -792,12 +805,10 @@ async def run_flux_edit(
         if not flux_unet_forced:
             flux_unet_forced = KONTEXT_UNET
     elif fluid and not undress_fluid:
-        # Face/body fluid: Cumifier is Flux.1 Kontext — run img2img on Kontext
-        # UNET (same pattern as clothed_i2i). ReferenceLatent denoise=1 rewrites face.
+        # Face fluid: Flux.1 D LoRAs on Dev img2img (not Kontext UNET).
         use_kontext = False
+        flux_unet_forced = "flux1-dev-fp8.safetensors"
         extra_tags.append("fluid_i2i")
-        if not flux_unet_forced:
-            flux_unet_forced = KONTEXT_UNET
     degraded = (
         (not use_kontext)
         and _preferred_wants_kontext(workflow)
@@ -813,9 +824,9 @@ async def run_flux_edit(
             and not fluid
         ):
             denoise = max(denoise, _DENOISE_DEGRADED.get(pname, 0.72))
-    # Fluid img2img: very low denoise; post composites gel onto intact start photo.
+    # Fluid img2img: mid denoise for sharper gel; face/clothes locked by mask + composite.
     if fluid and not undress_fluid and not use_kontext:
-        denoise = min(max(float(denoise_override or denoise or 0.40), 0.32), 0.46)
+        denoise = min(max(float(denoise_override or denoise or 0.55), 0.48), 0.62)
         extra_tags.append("fluid_identity_cap")
     if undress_fluid and not use_kontext:
         denoise = min(max(float(denoise), 0.88), 0.95)
@@ -1007,7 +1018,10 @@ async def run_flux_edit(
             flux_unet = str(filename)
     if flux_unet_forced:
         flux_unet = flux_unet_forced
-        model_label = "backbone.flux_kontext_dev_fp8"
+        if "kontext" in flux_unet_forced.lower():
+            model_label = "backbone.flux_kontext_dev_fp8"
+        else:
+            model_label = f"backbone.flux_dev_fp8|{flux_unet_forced}"
     if use_pose_control and not flux_unet:
         # Prefer Kontext weights in img2img when available for better instruction follow.
         flux_unet = KONTEXT_UNET
@@ -1026,7 +1040,7 @@ async def run_flux_edit(
     if use_pose_control:
         denoise_cap = max(denoise_cap, 0.92)
     if fluid and not undress_fluid:
-        denoise_cap = min(denoise_cap, 0.55)
+        denoise_cap = min(max(denoise_cap, 0.65), 0.72)
 
     client = ComfyClient(settings)
     if use_kontext:
