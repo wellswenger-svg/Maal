@@ -98,14 +98,14 @@ def register(add) -> None:
     )
     add(
         "lora.video_dr34ml4y_high",
-        filename="DR34ML4Y_I2V_14B_HIGH.safetensors",
+        filename="DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
         role="lora",
         status="missing",
         download_source="https://huggingface.co/lopi999/Wan2.2-DR34ML4Y-AIO_NSFW-LoRA",
     )
     add(
         "lora.video_dr34ml4y_low",
-        filename="DR34ML4Y_I2V_14B_LOW.safetensors",
+        filename="DR34ML4Y_I2V_14B_LOW_V2.safetensors",
         role="lora",
         status="missing",
         download_source="https://huggingface.co/lopi999/Wan2.2-DR34ML4Y-AIO_NSFW-LoRA",

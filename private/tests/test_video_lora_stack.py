@@ -106,8 +106,8 @@ class LoraStackResolveTests(unittest.TestCase):
             "PENISLORA_22_i2v_LOW_e496.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
-            "DR34ML4Y_I2V_14B_HIGH.safetensors",
-            "DR34ML4Y_I2V_14B_LOW.safetensors",
+            "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+            "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
             "Cumshot_LoRA.safetensors",
             "Wan2.2_LightX2V_high_n54vv.safetensors",
             "Wan2.2_LightX2V_low_n54vv.safetensors",
@@ -172,8 +172,8 @@ class LoraStackResolveTests(unittest.TestCase):
             "Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
             "Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
             "Wan2.2_I2V_Reveal_Penis_LOW.safetensors",
-            "DR34ML4Y_I2V_14B_HIGH.safetensors",
-            "DR34ML4Y_I2V_14B_LOW.safetensors",
+            "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+            "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
             "Cumshot_LoRA.safetensors",
         }
         with patch.object(ls, "_lora_dirs", return_value=[]):
@@ -219,8 +219,8 @@ class LoraStackResolveTests(unittest.TestCase):
             "PENISLORA_22_i2v_LOW_e496.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
-            "DR34ML4Y_I2V_14B_HIGH.safetensors",
-            "DR34ML4Y_I2V_14B_LOW.safetensors",
+            "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+            "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
             "Wan2.2_I2V_Missionary_HIGH.safetensors",
             "Wan2.2_I2V_Missionary_LOW.safetensors",
             "Wan2.2_I2V_Cowgirl_HIGH.safetensors",
@@ -235,6 +235,10 @@ class LoraStackResolveTests(unittest.TestCase):
             )
         self.assertIn("missionary_high", stack.applied_ids)
         self.assertIn("missionary_low", stack.applied_ids)
+        self.assertIn("dr34ml4y_high", stack.applied_ids)
+        self.assertIn("dr34ml4y_low", stack.applied_ids)
+        high_files = [f for f, _ in stack.high]
+        self.assertIn("DR34ML4Y_I2V_14B_HIGH_V2.safetensors", high_files)
         self.assertIn("female_gen_high", stack.applied_ids)
         self.assertNotIn("deepthroat_high", stack.applied_ids)
         self.assertNotIn("cowgirl_high", stack.applied_ids)

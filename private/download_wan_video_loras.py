@@ -32,6 +32,17 @@ DOWNLOADS: list[tuple[str, str, str]] = [
     ),
     (
         "lopi999/Wan2.2-DR34ML4Y-AIO_NSFW-LoRA",
+        "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+        "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+    ),
+    (
+        "lopi999/Wan2.2-DR34ML4Y-AIO_NSFW-LoRA",
+        "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
+        "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
+    ),
+    # v1 kept as soft fallback aliases if V2 unavailable on older mirrors
+    (
+        "lopi999/Wan2.2-DR34ML4Y-AIO_NSFW-LoRA",
         "DR34ML4Y_I2V_14B_HIGH.safetensors",
         "DR34ML4Y_I2V_14B_HIGH.safetensors",
     ),

@@ -104,11 +104,13 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "Cumshot_LoRA_HIGH.safetensors",
         ),
     ),
+    # DR34ML4Y AIO — BJ/missionary/cowgirl/doggy in one LoRA. Prefer V2.
     LoraSpec(
         "dr34ml4y_high",
         "high",
         0.45,
         (
+            "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
             "DR34ML4Y_I2V_14B_HIGH.safetensors",
             "DR34ML4Y_AllInOne.safetensors",
             "wan2.2-i2v-high-dr34ml4y-all-in-one-nsfw.safetensors",
@@ -185,6 +187,7 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
         "low",
         0.40,
         (
+            "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
             "DR34ML4Y_I2V_14B_LOW.safetensors",
             "DR34ML4Y_AllInOne.safetensors",
             "wan2.2-i2v-low-dr34ml4y-all-in-one-nsfw.safetensors",

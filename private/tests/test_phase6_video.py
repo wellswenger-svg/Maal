@@ -58,12 +58,14 @@ class Phase6MotionTests(unittest.TestCase):
         self.assertIn("oral", m["motion_kinds"])
         text = scaffold_i2v_prompt("give blowjob to a penis", m)
         self.assertIn("PENISLORA", text)
+        self.assertIn("bl0wj0b", text.lower())
         self.assertIn("erect penis", text.lower())
         self.assertIn("a man appears and she sucks his penis", text.lower())
-        self.assertIn("exact face", text.lower())
+        self.assertIn("identical face", text.lower())
         self.assertIn("man fully in frame", text.lower())
-        # Keep NSFW scaffolds short — long dumps mush start-frame identity.
-        self.assertLess(len(text), 700)
+        # Keep NSFW scaffolds bounded — long dumps mush start-frame identity.
+        # Oral path includes continuity + partner-enter cues by design.
+        self.assertLess(len(text), 1300)
         self.assertNotIn("follow this sequence", text.lower())
         self.assertNotIn("scene lock", text.lower())
 
@@ -73,6 +75,7 @@ class Phase6MotionTests(unittest.TestCase):
         self.assertIn("penetration", m["motion_kinds"])
         self.assertIn("missionary", m["motion_kinds"])
         text = scaffold_i2v_prompt("missionary sex thrusting", m)
+        self.assertIn("m15510n4ry", text.lower())
         self.assertIn("missionary", text.lower())
         self.assertIn("vagina", text.lower())
 
@@ -80,8 +83,10 @@ class Phase6MotionTests(unittest.TestCase):
         cg = extract_motion_hints("cowgirl riding")
         self.assertIn("cowgirl", cg["motion_kinds"])
         self.assertIn("penetration", cg["motion_kinds"])
+        self.assertIn("c0wg1rl", scaffold_i2v_prompt("cowgirl riding", cg).lower())
         dg = extract_motion_hints("doggy style from behind")
         self.assertIn("doggy", dg["motion_kinds"])
+        self.assertIn("d0gg1e", scaffold_i2v_prompt("doggy style from behind", dg).lower())
         hj = extract_motion_hints("handjob stroking the penis")
         self.assertIn("handjob", hj["motion_kinds"])
         self.assertNotIn("oral", hj["motion_kinds"])

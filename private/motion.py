@@ -206,6 +206,19 @@ def scaffold_i2v_prompt(
         # Trigger token for PENISLORA_22 when that LoRA is loaded.
         edit = f"{edit}. PENISLORA"
     kinds_l = [str(k) for k in kinds]
+    # DR34ML4Y AIO trained words (V2) — one pose trigger only, front of prompt.
+    _dr34 = {
+        "missionary": "m15510n4ry",
+        "cowgirl": "c0wg1rl",
+        "doggy": "d0gg1e",
+        "oral": "bl0wj0b",
+        "deepthroat": "bl0wj0b",
+    }
+    for key in _SEQUENCE_PRIORITY:
+        trig = _dr34.get(key)
+        if trig and key in kinds_l and not re.search(rf"\b{re.escape(trig)}\b", edit, re.I):
+            edit = f"{trig}, {edit}"
+            break
     if nsfw and ("oral" in kinds_l or "deepthroat" in kinds_l):
         # Kill jumpcut / kneeling-teleport cues (Blink training trigger) — they
         # break continuity and rewrite the start face.
