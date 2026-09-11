@@ -49,8 +49,8 @@ _CUMSHOT = re.compile(
 
 # Pose id → short motion cue (kept tiny — long scaffolds dilute Wan face lock).
 POSE_SCAFFOLDS: dict[str, str] = {
-    "oral": "clear rhythmic head bobbing on his erect penis",
-    "deepthroat": "deep oral thrusting on his erect penis",
+    "oral": "continuous blowjob — penis fully in her mouth, slow steady in-and-out head bobbing",
+    "deepthroat": "continuous deep oral — penis deep in her mouth, slow steady thrusting",
     "missionary": "missionary thrusting with erect penis in vagina",
     "cowgirl": "cowgirl riding with erect penis in vagina",
     "doggy": "doggy thrusting with erect penis entering from behind",
@@ -61,8 +61,8 @@ POSE_SCAFFOLDS: dict[str, str] = {
 
 # Kept for tests / callers; NSFW scaffold no longer dumps these (CLIP dilution).
 POSE_SEQUENCES: dict[str, str] = {
-    "oral": "man appears, then oral contact, then continuous blowjob. ",
-    "deepthroat": "man appears, then deepthroat, then continuous deep oral. ",
+    "oral": "man appears, she takes his penis fully into her mouth, then continuous blowjob. ",
+    "deepthroat": "man appears, she takes him deep, then continuous deep oral. ",
     "missionary": "missionary position, then penetration, then continuous thrusting. ",
     "cowgirl": "cowgirl mount, then penetration, then continuous riding. ",
     "doggy": "doggy position, then penetration, then continuous thrusting. ",
@@ -113,6 +113,9 @@ def extract_motion_hints(text: str) -> dict[str, Any]:
             kinds.append("handjob")
         if _CUMSHOT.search(t):
             kinds.append("cumshot")
+        # Oral: keep motion readable (not frozen tip-lick) but not jumpcut-fast.
+        if "oral" in kinds or "deepthroat" in kinds:
+            amplitude = "medium"
     if _PAN.search(t):
         kinds.append("pan")
     if _ZOOM.search(t):
@@ -165,6 +168,8 @@ def scaffold_i2v_prompt(
         "medium": "natural moderate motion",
         "high": "clear dynamic motion",
     }.get(str(amp), "natural moderate motion")
+    if nsfw and ("oral" in {str(k) for k in kinds} or "deepthroat" in {str(k) for k in kinds}):
+        amp_phrase = "slow continuous motion, no rush"
 
     kind_bits = []
     for k in kinds:
@@ -190,6 +195,9 @@ def scaffold_i2v_prompt(
                 primary = POSE_SCAFFOLDS[key]
                 break
         motion_line = primary or kind_bits[0]
+        seq = _pick_sequence([str(k) for k in kinds])
+        if seq and ("oral" in {str(k) for k in kinds} or "deepthroat" in {str(k) for k in kinds}):
+            motion_line = f"{seq.strip().rstrip('.')} — {motion_line}"
     else:
         motion_line = "; ".join(kind_bits) if kind_bits else "subtle natural motion"
 
@@ -199,48 +207,81 @@ def scaffold_i2v_prompt(
         edit = f"{edit}. PENISLORA"
     kinds_l = [str(k) for k in kinds]
     if nsfw and ("oral" in kinds_l or "deepthroat" in kinds_l):
-        # Oral Insertion trigger — partner enters frame from solo start.
+        # Kill jumpcut / kneeling-teleport cues (Blink training trigger) — they
+        # break continuity and rewrite the start face.
+        edit = re.sub(
+            r"(?i)\s*(?:then\s+)?jumpcut\b[^.]*(?:\.|$)",
+            ". ",
+            edit,
+        )
+        edit = re.sub(
+            r"(?i)\s*kneeling in front of him[^.]*(?:\.|$)",
+            ". ",
+            edit,
+        )
+        edit = re.sub(r"\s{2,}", " ", edit).strip(" .")
+        # Partner-enter cue for oral — keep ONE continuous camera (no jumpcut).
         if not re.search(
             r"a man appears and she sucks his (erect )?penis",
             edit,
             re.I,
         ):
-            edit = f"{edit}. A man appears and she sucks his penis"
-        # Blink Blowjob I2V — portrait→kneeling BJ transition cue.
-        if not re.search(r"jumpcut|kneeling in front", edit, re.I):
             edit = (
-                f"{edit}. Then jumpcut to the same woman kneeling in front of him "
-                "giving a blowjob, looking up, holding his penis with both hands"
+                f"{edit}. A man appears and she sucks his penis — "
+                "takes him fully into her mouth, then continuous blowjob"
+            )
+        if not re.search(r"fully into her mouth|continuous blowjob|penis fully in", edit, re.I):
+            edit = (
+                f"{edit}. Full continuous blowjob sequence: penis fully in her mouth, "
+                "lips sealed on the shaft, slow steady head bobbing in and out — "
+                "not tip licking only"
+            )
+        if not re.search(r"no jumpcut|no teleport|same framing|same angle", edit, re.I):
+            edit = (
+                f"{edit}. Same angle and framing as the start; she stays "
+                "in the same standing/portrait pose while performing oral — no jumpcut, "
+                "no kneeling teleport, no pose swap"
             )
     if nsfw and "cumshot" in kinds_l:
         # F4C3SPL4SH (K3NK) trained word — required for reliable facial finish.
         if not re.search(r"\bf4c3spl4sh\b", edit, re.I):
             edit = f"f4c3spl4sh, {edit}"
+        # Prevent opaque white face-wipe / soft mush from the finish LoRA.
+        if not re.search(r"eyes?\s+(stay|remain|visible|readable)|through\s+thinner", edit, re.I):
+            edit = (
+                f"{edit}. Eyes, brows, and face geometry stay sharp and fully readable "
+                "through thinner translucent gel — not an opaque white mask, not soft mush, "
+                "not a beauty blur over the whole face"
+            )
     edit = edit.rstrip(". ")
 
     if nsfw:
         identity = (
-            "Same woman as the start frame: exact face sharp every frame; "
-            "same hair, skin, body, room — no blur, no face morph, no new identity. "
+            "CRITICAL: exact same woman as the start frame — identical face geometry "
+            "(eyes, nose, lips, jaw, skin), identical hair; zero face change, zero "
+            "beautify, zero morph; keep her natural start expression — no ahegao, "
+            "no eye-roll, no cartoon face; face razor-sharp every frame. "
+            "Same clothes colors and background. "
         )
         anatomy = (
             "Man fully in frame (torso, hips, hands); erect penis clearly visible; "
             "no floating penis, no censored blur. "
         )
         consistency = (
-            "Single continuous shot, one angle, no cuts; crisp facial focus; "
-            "stable temporal continuity."
+            "ONE continuous shot only — same angle, same framing, no cuts, no jumpcut, "
+            "no teleport pose change; stable temporal continuity; "
+            "face stays identical and razor-sharp every frame, no soft mush, no beautify."
         )
         # Do not re-dump long sequences — user prompt + LoRA triggers carry the act.
         if raw_prompt:
             return (
                 f"{identity}{edit}. "
-                f"Motion: {motion_line}. "
+                f"Motion: {motion_line} ({amp_phrase}). "
                 f"{anatomy}{consistency}"
             ).strip()
         return (
             f"{identity}"
-            f"Motion: {motion_line}. "
+            f"Motion: {motion_line} ({amp_phrase}). "
             f"{anatomy}{consistency} "
             f"User direction: {edit}"
         ).strip()

@@ -61,22 +61,22 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "PENISLORA_22_i2v_HIGH_e191.safetensors",
         ),
     ),
-    # iGOON Blink Blowjob — portrait→BJ jumpcut (replaces K3NK Ultimate Deepthroat).
+    # iGOON Blink Blowjob — continuity mode (no jumpcut). 0.65 OOMs/dies on tunnel;
+    # 0.55 + full-sequence prompt is the stable full-BJ path.
     LoraSpec(
         "deepthroat_high",
         "high",
-        0.85,
+        0.55,
         (
             "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "iGOON_Blink_Blowjob_I2V_HIGH.safetensors",
         ),
     ),
-    # Oral Insertion — trigger: "A man appears and she sucks his penis"
-    # Forces a real male partner into the frame (not a floating penis).
+    # Oral Insertion — skipped when Blink is on (see _action_allows).
     LoraSpec(
         "oral_insertion_high",
         "high",
-        0.90,
+        0.85,
         (
             "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
             "wan2.2-i2v-high-oral-insertion-v1.0.safetensors",
@@ -92,11 +92,12 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "2.2-I2V Reveal Penis_000003000_high_noise.safetensors",
         ),
     ),
-    # F4C3SPL4SH (K3NK) — facial cumshot; author: high 1.0 + low 1.4, trigger f4c3spl4sh
+    # F4C3SPL4SH (K3NK) — facial cumshot; trigger f4c3spl4sh.
+    # Author used 1.0/1.4 but that wipes face identity — bias readable eyes/face.
     LoraSpec(
         "cumshot_high",
         "high",
-        1.00,
+        0.70,
         (
             "Wan2.2_I2V_Cumshot_HIGH.safetensors",
             "wan22-f4c3spl4sh-100epoc-high-k3nk.safetensors",
@@ -145,7 +146,7 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "deepthroat_low",
         "low",
-        0.80,
+        0.50,
         (
             "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
             "iGOON_Blink_Blowjob_I2V_LOW.safetensors",
@@ -154,7 +155,7 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "oral_insertion_low",
         "low",
-        0.85,
+        0.80,
         (
             "Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
             "wan2.2-i2v-low-oral-insertion-v1.0.safetensors",
@@ -172,7 +173,7 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "cumshot_low",
         "low",
-        1.40,
+        0.95,
         (
             "Cumshot_LoRA.safetensors",
             "Wan2.2_I2V_Cumshot_LOW.safetensors",
@@ -477,11 +478,10 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
         if spec_id.startswith(prefix + "_") or spec_id == prefix:
             return need_kind in kinds
 
-    # Oral Insertion owns partner+penis for oral; Reveal Penis is handjob-only
-    # (stacking both with Deepthroat muddy the face and soften detail).
+    # Blink owns oral BJ (better act + continuity than Insertion alone).
+    # Do not stack Oral Insertion — dual oral LoRAs softens/blurs the face.
     if spec_id.startswith("oral_insertion"):
-        return oral
-    # Blink Blowjob LoRA drives BJ motion for oral + explicit deepthroat.
+        return False
     if spec_id.startswith("deepthroat"):
         return oral
     if spec_id.startswith("reveal_penis"):
@@ -512,6 +512,14 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
         if spec_id.startswith("female_gen"):
             return False
         if spec_id.startswith("cumshot") and not cumshot:
+            return False
+
+    # Cumshot-only facial finish: drop vagina + generic dream so Cumshot + PENISLORA
+    # keep the strength budget (same idea as oral-only). Keep male_gen for partner.
+    if cumshot and not oral and not penetration and not handjob:
+        if spec_id.startswith("female_gen"):
+            return False
+        if spec_id.startswith("dr34ml4y"):
             return False
 
     # Cumshot LoRA only when finish is explicitly requested (not all Sex runs).

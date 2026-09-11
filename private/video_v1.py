@@ -86,21 +86,32 @@ async def run_i2v_v1(
     # (0.42–0.60) rewrite the start face into soft mush — bias low-noise refine.
     kinds_l = [str(k) for k in (motion.get("motion_kinds") or [])]
     oralish = nsfw and ("oral" in kinds_l or "deepthroat" in kinds_l)
-    if oralish:
-        # Oral LoRAs already rewrite composition — lean harder on low-noise face lock.
-        high_noise_fraction = 0.30
+    # Facial cumshot also rewrites the start face hard — same identity knobs as oral.
+    facelock = oralish or (nsfw and "cumshot" in kinds_l)
+    if facelock:
+        # Face lock first: high-noise invents partner/fluid but must not remake her face.
+        high_noise_fraction = 0.18
     elif nsfw:
         high_noise_fraction = 0.34
     else:
         high_noise_fraction = 0.4
     if nsfw:
         # Mild CFG — high CFG fights the start image and softens the face.
-        cfg = min(max(cfg, 3.5), 3.7)
-        steps = max(steps, 42)
+        cfg = min(max(cfg, 3.4), 3.55) if facelock else min(max(cfg, 3.5), 3.7)
+        # More steps + slower oral motion (lower fps) to reduce mid/late mouth mush.
+        # Cap oral/cumshot steps at 52 on Colab tunnel — 60+ often dies mid-run on 3–5s.
+        steps = max(steps, 52 if facelock else 42)
+        if facelock:
+            # Keep 16fps so 3s has enough frames for full BJ sequence (12fps was tip-only).
+            fps = max(fps, 16)
+            if video_seconds is not None:
+                length = frames_for_seconds(float(video_seconds), fps)
+            motion["amplitude"] = "medium"
         # NSFW I2V softens badly under 720 — keep native detail for faces/acts.
-        # Oral needs even more side length; balanced was landing ~464x640 mush.
-        floor = 832 if oralish else 720
-        if pname in ("balanced", "quality", "ultra") or oralish:
+        # Oral/cumshot need even more side length; balanced was landing ~464x640 mush.
+        # Cap at 832 on 16GB — 896 + multi-LoRA stalled the sampler.
+        floor = 832 if facelock else 720
+        if pname in ("balanced", "quality", "ultra") or facelock:
             max_side = max(max_side, floor)
         # Skip deferred RIFE annotation — interpolation softens detail if wired later.
         if plan is not None and params.get("post"):

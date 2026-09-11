@@ -153,7 +153,7 @@ class LoraStackResolveTests(unittest.TestCase):
             )
         self.assertIn("penis_lora_high", stack.applied_ids)
         self.assertIn("deepthroat_high", stack.applied_ids)
-        self.assertIn("oral_insertion_high", stack.applied_ids)
+        self.assertNotIn("oral_insertion_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
         self.assertGreaterEqual(len(stack.high), 2)
@@ -185,7 +185,7 @@ class LoraStackResolveTests(unittest.TestCase):
             )
         self.assertIn("penis_lora_high", stack.applied_ids)
         self.assertIn("deepthroat_high", stack.applied_ids)
-        self.assertIn("oral_insertion_high", stack.applied_ids)
+        self.assertNotIn("oral_insertion_high", stack.applied_ids)
         self.assertNotIn("reveal_penis_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
@@ -207,7 +207,7 @@ class LoraStackResolveTests(unittest.TestCase):
                 motion_kinds=["nsfw_action", "oral", "deepthroat"],
             )
         self.assertIn("deepthroat_high", stack.applied_ids)
-        self.assertIn("oral_insertion_high", stack.applied_ids)
+        self.assertNotIn("oral_insertion_high", stack.applied_ids)
 
     def test_missionary_loads_pose_lora_skips_deepthroat(self) -> None:
         available = {
@@ -307,8 +307,8 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("cumshot_low", stack.applied_ids)
         high_map = {f: s for f, s in stack.high}
         low_map = {f: s for f, s in stack.low}
-        self.assertAlmostEqual(high_map["Wan2.2_I2V_Cumshot_HIGH.safetensors"], 1.0)
-        self.assertAlmostEqual(low_map["Cumshot_LoRA.safetensors"], 1.4)
+        self.assertAlmostEqual(high_map["Wan2.2_I2V_Cumshot_HIGH.safetensors"], 0.70)
+        self.assertAlmostEqual(low_map["Cumshot_LoRA.safetensors"], 0.95)
 
     def test_pose_lora_alias_filename(self) -> None:
         available = {

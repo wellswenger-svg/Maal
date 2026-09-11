@@ -274,7 +274,7 @@ def _select_loras(
             except ValueError:
                 pass
         remover_w = 0.98 if (undress_fluid or pose_undress) else 0.95
-        cof_w = 0.95 if undress_fluid else 0.88
+        cof_w = 1.20 if not undress_fluid else 0.95
         if cof_str:
             try:
                 cof_w = float(cof_str)
@@ -284,7 +284,7 @@ def _select_loras(
         strengths = {
             "clothes_remover": remover_w,
             "nsfw_unlock": unlock_w,
-            # Flux.1 D facial LoRAs: stronger than Cumifier; mask+composite holds identity.
+            # Flux.1 D facial LoRAs: strong coverage; gel composite holds facing/identity.
             "cof": cof_w,
             "breast_enhance": float(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
@@ -481,13 +481,15 @@ def build_edit_prompt(
                 focus_l = (focus or "face").lower()
                 if focus_l in ("face", "facial"):
                     fluid_bit = (
-                        "a light natural facial of translucent whitish semen — a few "
-                        "uneven glossy droplets and thin wet films on forehead, cheeks, "
-                        "nose bridge, lips, and chin only, plus 1–2 small drips onto the "
-                        "upper neck / blouse edge. Skin, eyes, brows, and expression must "
-                        "stay fully visible and unchanged through thin films. Keep exact "
-                        "hair color and strands. Do not cover the whole face, do not melt "
-                        "or remake features, do not recolor or reshape clothes."
+                        "a heavy natural facial of translucent whitish semen — dense "
+                        "uneven glossy droplets, thick wet ropes, and dripping films across "
+                        "forehead, cheeks, nose bridge, lips, and chin, with several long "
+                        "drips down the chin onto the upper neck only. Lots of visible "
+                        "liquid volume, gooey and stringy, skin still readable through "
+                        "thinner films. Eyes, brows, expression, and exact head angle / "
+                        "facing must stay identical to the start photo. Keep exact hair "
+                        "color and strands. Do not paint arms, back, or clothes. Do not "
+                        "melt, remake, or turn the face."
                     )
                 elif focus_l in ("lips", "mouth"):
                     fluid_bit = (
@@ -839,9 +841,10 @@ async def run_flux_edit(
 
         unet_n = str(flux_unet_forced or _os_dn.environ.get("FLUID_FLUX_UNET") or "")
         if "dedistill" in unet_n.lower():
-            denoise = min(max(float(denoise_override or denoise or 0.58), 0.50), 0.68)
+            denoise = min(max(float(denoise_override or denoise or 0.60), 0.52), 0.70)
         else:
-            denoise = min(max(float(denoise_override or denoise or 0.48), 0.42), 0.55)
+            # Slightly higher so NFA lays more facial fluid; facing locked in composite.
+            denoise = min(max(float(denoise_override or denoise or 0.55), 0.48), 0.62)
         extra_tags.append("fluid_identity_cap")
 
     if undress_fluid and not use_kontext:
@@ -869,6 +872,8 @@ async def run_flux_edit(
         "different person, face swap, changed identity, wrong face, morphing face, "
         "identity drift, beautified face, different eyes, different nose, "
         "different jaw, age change, face reshape, face hidden, face erased, "
+        "turned head, different head angle, changed facing, looking away, "
+        "pose change, body turn, different camera angle, "
         "matte white paint, acrylic paint, gouache, flat opaque white patch, "
         "solid white mask, plaster, chalk, toothpaste, whiteout, primer, "
         "opaque coating hiding skin, face covered in solid white, "

@@ -24,7 +24,7 @@ LORA_DEFAULT_STRENGTH = {
     "content_unlock": 0.80,
     "nsfw_unlock": 0.80,
     # Modest gel on Dev img2img; identity via gel-only highlight composite.
-    "cof": 0.88,
+    "cof": 1.20,
     # Clothed reshape (Flux Kontext). Civitai 1802814 → flux_kontext_figure_reshape_v1.
     "bust_enhance": 0.82,
     "breast_enhance": 0.82,
