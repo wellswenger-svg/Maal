@@ -139,14 +139,16 @@ def register(add) -> None:
         download_source="https://huggingface.co/onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",
     )
     add(
-        "lora.video_coachbate_low",
-        filename="CoachBate_PENIS_LoRA.safetensors",
+        "lora.video_missionary_high",
+        filename="Wan2.2_I2V_Missionary_HIGH.safetensors",
         role="lora",
         status="missing",
+        download_source="https://huggingface.co/profpeng/wanmissionsex",
     )
     add(
-        "lora.video_smoothmix_low",
-        filename="SmoothMix_Males.safetensors",
+        "lora.video_missionary_low",
+        filename="Wan2.2_I2V_Missionary_LOW.safetensors",
         role="lora",
         status="missing",
+        download_source="https://huggingface.co/profpeng/wanmissionsex",
     )

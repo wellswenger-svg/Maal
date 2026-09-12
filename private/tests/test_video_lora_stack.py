@@ -70,6 +70,17 @@ class DualStageLoraGraphTests(unittest.TestCase):
 
 
 class LoraStackResolveTests(unittest.TestCase):
+    def _patch_lora_dirs(self, dirs: list[Path]):
+        """Patch dirs on the private overlay module (bind copies leave globals there)."""
+        import sys
+
+        # Ensure overlay is loaded.
+        from backend.ai_engine.workflows.video_i2v import lora_stack as _ls  # noqa: F401
+
+        priv = sys.modules.get("wan_private_lora_stack")
+        self.assertIsNotNone(priv)
+        return patch.object(priv, "_lora_dirs", return_value=dirs)
+
     def test_cap_stage(self) -> None:
         items = [("a.safetensors", 3.0, "a"), ("b.safetensors", 3.0, "b")]
         capped = ls._cap_stage(items)
@@ -82,9 +93,18 @@ class LoraStackResolveTests(unittest.TestCase):
             (root / "Wan2.2_LightX2V_high_n54vv.safetensors").write_bytes(b"x" * 2000)
             (root / "Wan2.2_LightX2V_low_n54vv.safetensors").write_bytes(b"x" * 2000)
             (root / "PENISLORA_22_i2v_HIGH_e320.safetensors").write_bytes(b"x" * 2000)
+            available = {
+                "Wan2.2_LightX2V_high_n54vv.safetensors",
+                "Wan2.2_LightX2V_low_n54vv.safetensors",
+                "PENISLORA_22_i2v_HIGH_e320.safetensors",
+            }
 
-            with patch.object(ls, "_lora_dirs", return_value=[root]):
-                stack = ls.resolve_video_lora_stack(include_optional=True)
+            with self._patch_lora_dirs([root]):
+                stack = ls.resolve_video_lora_stack(
+                    include_optional=True,
+                    available_names=available,
+                    trust_remote=False,
+                )
 
             self.assertTrue(stack.lightx2v_active)
             # Quality path keeps full steps; distill override is draft-only.
@@ -112,7 +132,7 @@ class LoraStackResolveTests(unittest.TestCase):
             "Wan2.2_LightX2V_high_n54vv.safetensors",
             "Wan2.2_LightX2V_low_n54vv.safetensors",
         }
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=True,
                 available_names=available,
@@ -129,7 +149,7 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertGreaterEqual(len(stack.high), 3)
 
     def test_trust_remote_when_no_probe(self) -> None:
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=False,
                 available_names=None,
@@ -143,7 +163,7 @@ class LoraStackResolveTests(unittest.TestCase):
 
     def test_empty_catalog_still_trusts_core(self) -> None:
         """Tunnel glitch returning [] must not wipe the NSFW LoRA stack."""
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=False,
                 available_names=set(),
@@ -154,7 +174,6 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("penis_lora_high", stack.applied_ids)
         self.assertIn("deepthroat_high", stack.applied_ids)
         self.assertIn("dr34ml4y_high", stack.applied_ids)
-        self.assertNotIn("oral_insertion_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
         self.assertGreaterEqual(len(stack.high), 2)
@@ -169,15 +188,11 @@ class LoraStackResolveTests(unittest.TestCase):
             "PENISLORA_22_i2v_LOW_e496.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
-            "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
-            "Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
-            "Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
-            "Wan2.2_I2V_Reveal_Penis_LOW.safetensors",
             "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
             "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
             "Cumshot_LoRA.safetensors",
         }
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=True,
                 available_names=available,
@@ -188,8 +203,6 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("deepthroat_high", stack.applied_ids)
         self.assertIn("dr34ml4y_high", stack.applied_ids)
         self.assertIn("dr34ml4y_low", stack.applied_ids)
-        self.assertNotIn("oral_insertion_high", stack.applied_ids)
-        self.assertNotIn("reveal_penis_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
         self.assertNotIn("cumshot_high", stack.applied_ids)
@@ -199,10 +212,9 @@ class LoraStackResolveTests(unittest.TestCase):
         available = {
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
-            "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
             "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
         }
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=False,
                 available_names=available,
@@ -211,7 +223,6 @@ class LoraStackResolveTests(unittest.TestCase):
             )
         self.assertIn("deepthroat_high", stack.applied_ids)
         self.assertIn("dr34ml4y_high", stack.applied_ids)
-        self.assertNotIn("oral_insertion_high", stack.applied_ids)
 
     def test_missionary_loads_pose_lora_skips_deepthroat(self) -> None:
         available = {
@@ -227,10 +238,8 @@ class LoraStackResolveTests(unittest.TestCase):
             "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
             "Wan2.2_I2V_Missionary_HIGH.safetensors",
             "Wan2.2_I2V_Missionary_LOW.safetensors",
-            "Wan2.2_I2V_Cowgirl_HIGH.safetensors",
-            "Wan2.2_I2V_Doggy_HIGH.safetensors",
         }
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=True,
                 available_names=available,
@@ -245,8 +254,10 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("DR34ML4Y_I2V_14B_HIGH_V2.safetensors", high_files)
         self.assertIn("female_gen_high", stack.applied_ids)
         self.assertNotIn("deepthroat_high", stack.applied_ids)
+        # Dropped optional pose LoRAs must not reappear.
         self.assertNotIn("cowgirl_high", stack.applied_ids)
         self.assertNotIn("doggy_high", stack.applied_ids)
+        self.assertNotIn("handjob_high", stack.applied_ids)
 
     def test_skips_corrupt_local_safetensors(self) -> None:
         """Truncated enhancer must not be queued (Sex crash: invalid size 95251)."""
@@ -261,39 +272,19 @@ class LoraStackResolveTests(unittest.TestCase):
                 "female_genitalia_enhancer_high.safetensors",
                 "PENISLORA_22_i2v_HIGH_e320.safetensors",
             }
-            with patch.object(ls, "_lora_dirs", return_value=[d]):
+            with self._patch_lora_dirs([d]):
                 hit_bad = ls.find_lora_file(
                     ("female_genitalia_enhancer_high.safetensors",),
                     available_names=available,
+                    trust_remote=False,
                 )
                 hit_good = ls.find_lora_file(
                     ("PENISLORA_22_i2v_HIGH_e320.safetensors",),
                     available_names=available,
+                    trust_remote=False,
                 )
             self.assertIsNone(hit_bad)
             self.assertEqual(hit_good, "PENISLORA_22_i2v_HIGH_e320.safetensors")
-
-        available = {
-            "male_genitalia_enhancer_high.safetensors",
-            "PENISLORA_22_i2v_HIGH_e320.safetensors",
-            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
-            "female_genitalia_enhancer_high.safetensors",
-            "Wan2.2_I2V_Handjob_HIGH.safetensors",
-            "Cumshot_LoRA.safetensors",
-        }
-        with patch.object(ls, "_lora_dirs", return_value=[]):
-            stack = ls.resolve_video_lora_stack(
-                include_optional=True,
-                available_names=available,
-                nsfw=True,
-                motion_kinds=["nsfw_action", "handjob"],
-            )
-        self.assertIn("handjob_high", stack.applied_ids)
-        self.assertIn("penis_lora_high", stack.applied_ids)
-        self.assertNotIn("deepthroat_high", stack.applied_ids)
-        self.assertNotIn("female_gen_high", stack.applied_ids)
-        self.assertNotIn("cumshot_high", stack.applied_ids)
-        self.assertNotIn("cumshot_low", stack.applied_ids)
 
     def test_cumshot_loads_high_and_low(self) -> None:
         available = {
@@ -304,7 +295,7 @@ class LoraStackResolveTests(unittest.TestCase):
             "male_genitalia_enhancer_high.safetensors",
             "male_genitalia_enhancer_low.safetensors",
         }
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=False,
                 available_names=available,
@@ -320,21 +311,21 @@ class LoraStackResolveTests(unittest.TestCase):
 
     def test_pose_lora_alias_filename(self) -> None:
         available = {
-            "Wan2.2 - I2V - Doggy Style - 14B_high_noise.safetensors",
-            "Wan2.2 - I2V - Doggy Style - 14B_low_noise.safetensors",
+            "Wan2.2 - I2V - Missionary Sex - HIGH 14B.safetensors",
+            "Wan2.2 - I2V - Missionary Sex - LOW 14B.safetensors",
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
         }
-        with patch.object(ls, "_lora_dirs", return_value=[]):
+        with self._patch_lora_dirs([]):
             stack = ls.resolve_video_lora_stack(
                 include_optional=True,
                 available_names=available,
                 nsfw=True,
-                motion_kinds=["nsfw_action", "penetration", "doggy"],
+                motion_kinds=["nsfw_action", "penetration", "missionary"],
             )
-        self.assertIn("doggy_high", stack.applied_ids)
-        self.assertIn("doggy_low", stack.applied_ids)
+        self.assertIn("missionary_high", stack.applied_ids)
+        self.assertIn("missionary_low", stack.applied_ids)
         high_files = [f for f, _ in stack.high]
         self.assertIn(
-            "Wan2.2 - I2V - Doggy Style - 14B_high_noise.safetensors",
+            "Wan2.2 - I2V - Missionary Sex - HIGH 14B.safetensors",
             high_files,
         )

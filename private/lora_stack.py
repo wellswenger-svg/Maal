@@ -72,26 +72,6 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "iGOON_Blink_Blowjob_I2V_HIGH.safetensors",
         ),
     ),
-    # Oral Insertion — skipped when Blink is on (see _action_allows).
-    LoraSpec(
-        "oral_insertion_high",
-        "high",
-        0.85,
-        (
-            "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
-            "wan2.2-i2v-high-oral-insertion-v1.0.safetensors",
-        ),
-    ),
-    LoraSpec(
-        "reveal_penis_high",
-        "high",
-        0.70,
-        (
-            "Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
-            "Wan2.2-I2V_Reveal_Penis.safetensors",
-            "2.2-I2V Reveal Penis_000003000_high_noise.safetensors",
-        ),
-    ),
     # F4C3SPL4SH (K3NK) — facial cumshot; trigger f4c3spl4sh.
     # Author used 1.0/1.4 but that wipes face identity — bias readable eyes/face.
     LoraSpec(
@@ -155,24 +135,6 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
         ),
     ),
     LoraSpec(
-        "oral_insertion_low",
-        "low",
-        0.80,
-        (
-            "Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
-            "wan2.2-i2v-low-oral-insertion-v1.0.safetensors",
-        ),
-    ),
-    LoraSpec(
-        "reveal_penis_low",
-        "low",
-        0.65,
-        (
-            "Wan2.2_I2V_Reveal_Penis_LOW.safetensors",
-            "2.2-I2V Reveal Penis_000003000_low_noise.safetensors",
-        ),
-    ),
-    LoraSpec(
         "cumshot_low",
         "low",
         0.95,
@@ -196,22 +158,8 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
 )
 
 # Pose LoRAs — optional; skipped unless matching motion kind is present.
-# Preferred names first; Civitai/HF aliases accepted as-found on the GPU box.
+# Only missionary is product-backed (Sex button); DR34 covers other acts.
 OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
-    LoraSpec(
-        "coachbate_low",
-        "low",
-        0.60,
-        ("CoachBate_PENIS_LoRA.safetensors",),
-        optional=True,
-    ),
-    LoraSpec(
-        "smoothmix_low",
-        "low",
-        0.60,
-        ("SmoothMix_Males.safetensors",),
-        optional=True,
-    ),
     LoraSpec(
         "missionary_high",
         "high",
@@ -238,91 +186,11 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
         ),
         optional=True,
     ),
-    LoraSpec(
-        "cowgirl_high",
-        "high",
-        0.95,
-        (
-            "Wan2.2_I2V_Cowgirl_HIGH.safetensors",
-            "Wan22-I2V-HIGH-Hip_Slammin_Assertive_Cowgirl.safetensors",
-            "Wan2.2_Assertive_Cowgirl_I2V_HIGH.safetensors",
-            "Assertive_Cowgirl_Wan22_I2V_HIGH.safetensors",
-            "wan22_assertive_cowgirl_high.safetensors",
-        ),
-        optional=True,
-    ),
-    LoraSpec(
-        "cowgirl_low",
-        "low",
-        0.90,
-        (
-            "Wan2.2_I2V_Cowgirl_LOW.safetensors",
-            "Wan22-I2V-LOW-Hip_Slammin_Assertive_Cowgirl.safetensors",
-            "Wan2.2_Assertive_Cowgirl_I2V_LOW.safetensors",
-            "Assertive_Cowgirl_Wan22_I2V_LOW.safetensors",
-            "wan22_assertive_cowgirl_low.safetensors",
-        ),
-        optional=True,
-    ),
-    LoraSpec(
-        "doggy_high",
-        "high",
-        0.95,
-        (
-            "Wan2.2_I2V_Doggy_HIGH.safetensors",
-            "Wan2.2 - I2V - Doggy Style - 14B_high_noise.safetensors",
-            "Wan2.2-I2V-DoggyStyle-14B_high_noise.safetensors",
-            "Wan2.2_I2V_Doggy_Style_14B_high_noise.safetensors",
-            "mql_casting_sex_doggy_kneel_diagonally_behind_vagina_wan22_i2v_v1_high_noise.safetensors",
-            "iGoon - Blink_Front_Doggystyle_I2V_HIGH.safetensors",
-        ),
-        optional=True,
-    ),
-    LoraSpec(
-        "doggy_low",
-        "low",
-        0.90,
-        (
-            "Wan2.2_I2V_Doggy_LOW.safetensors",
-            "Wan2.2 - I2V - Doggy Style - 14B_low_noise.safetensors",
-            "Wan2.2-I2V-DoggyStyle-14B_low_noise.safetensors",
-            "Wan2.2_I2V_Doggy_Style_14B_low_noise.safetensors",
-            "mql_casting_sex_doggy_kneel_diagonally_behind_vagina_wan22_i2v_v1_low_noise.safetensors",
-        ),
-        optional=True,
-    ),
-    LoraSpec(
-        "handjob_high",
-        "high",
-        0.95,
-        (
-            "Wan2.2_I2V_Handjob_HIGH.safetensors",
-            "WAN-2.2-I2V-Handjob-HIGH-v1.safetensors",
-            "Wan2.2 - T2V - POV Hand Job - HIGH 14B.safetensors",
-            "WAN-2.2-I2V-HandjobBlowjobCombo-HIGH-v1.safetensors",
-        ),
-        optional=True,
-    ),
-    LoraSpec(
-        "handjob_low",
-        "low",
-        0.90,
-        (
-            "Wan2.2_I2V_Handjob_LOW.safetensors",
-            "WAN-2.2-I2V-Handjob-LOW-v1.safetensors",
-            "Wan2.2 - T2V - POV Hand Job - LOW 14B.safetensors",
-            "WAN-2.2-I2V-HandjobBlowjobCombo-LOW-v1.safetensors",
-        ),
-        optional=True,
-    ),
 )
 
 # Pose LoRA id prefix → required motion kind (only load when that pose is requested).
 _POSE_LORA_KIND: dict[str, str] = {
     "missionary": "missionary",
-    "cowgirl": "cowgirl",
-    "doggy": "doggy",
-    "handjob": "handjob",
 }
 
 
@@ -482,14 +350,9 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
             return need_kind in kinds
 
     # Oral BJ full-sequence: Blink drives bobbing; DR34ML4Y V2 adds partner body.
-    # Needs ≥5s — 3s collapses to tip-insertion. Skip Oral Insertion (face mush).
-    if spec_id.startswith("oral_insertion"):
-        return False
     if spec_id.startswith("deepthroat"):
         return oral
-    if spec_id.startswith("reveal_penis"):
-        return handjob and not oral
-    # Male gen enhancer is redundant when PENISLORA + oral insertion are on.
+    # Male gen enhancer is redundant when PENISLORA is on for oral-only.
     if oral and not penetration and spec_id.startswith("male_gen"):
         return False
 
@@ -501,14 +364,14 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
         if spec_id.startswith("cumshot") and not cumshot:
             return False
 
-    # Penetration-only: skip oral blowjob / oral-insertion LoRAs.
+    # Penetration-only: skip oral blowjob LoRAs.
     if penetration and not oral:
-        if spec_id.startswith("deepthroat") or spec_id.startswith("oral_insertion"):
+        if spec_id.startswith("deepthroat"):
             return False
 
     # Handjob-only: keep penis LoRAs; drop oral + female gen + finish noise.
     if handjob and not oral and not penetration:
-        if spec_id.startswith("deepthroat") or spec_id.startswith("oral_insertion"):
+        if spec_id.startswith("deepthroat"):
             return False
         if spec_id.startswith("female_gen"):
             return False
