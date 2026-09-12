@@ -112,6 +112,18 @@ class AiEnginePhase2RulesTests(unittest.TestCase):
         self.assertFalse(r.bypass_vlm)
         self.assertLess(r.confidence, rules.RULE_CONFIDENCE_THRESHOLD)
 
+    def test_freeform_short_enhance_wires_reshape(self) -> None:
+        r = rules.classify(_req("enhance"))
+        self.assertEqual(r.task_type, "edit.keep_outfit_reshape")
+        self.assertTrue(r.params_hints.get("clothed_enhance"))
+        loras = r.params_hints.get("loras") or []
+        self.assertIn("nsfw_unlock", loras)
+        self.assertIn("breast_enhance", loras)
+        self.assertIn("ass_enhance", loras)
+        r_boobs = rules.classify(_req("enhance boobs"))
+        self.assertIn("breast_enhance", r_boobs.params_hints.get("loras") or [])
+        self.assertNotIn("ass_enhance", r_boobs.params_hints.get("loras") or [])
+
     def test_face_edit(self) -> None:
         r = rules.classify(_req("make her smile naturally"))
         self.assertEqual(r.task_type, "edit.face")
@@ -128,16 +140,22 @@ class AiEnginePhase2RulesTests(unittest.TestCase):
         self.assertEqual(r.targets[0]["label"], "face")
         self.assertLessEqual(float(r.params_hints.get("denoise") or 1), 0.62)
 
-    def test_fluid_overlay_glasses(self) -> None:
-        r = rules.classify(_req("put cum on her glasses and specs"))
-        self.assertEqual(r.task_type, "edit.general_instruction")
-        self.assertEqual(r.targets[0]["label"], "glasses")
-        self.assertNotIn("clothes_remover", r.params_hints.get("loras") or [])
+    def test_misc_fluid_keyword_swaps_cof(self) -> None:
+        r = rules.classify(_req("cumshot on her face cuminator"))
+        self.assertIn("cof_misc_cuminator", r.params_hints.get("loras") or [])
+        self.assertNotIn("cof", r.params_hints.get("loras") or [])
 
-    def test_fluid_overlay_lips_not_face_edit(self) -> None:
-        r = rules.classify(_req("cum on her lips"))
-        self.assertEqual(r.task_type, "edit.general_instruction")
-        self.assertEqual(r.targets[0]["label"], "lips")
+    def test_fluid_overlay_lips_glasses_collapse_to_face(self) -> None:
+        # Lips/glasses UI targets were removed — freeform still uses facial cof.
+        for prompt in (
+            "put cum on her glasses and specs",
+            "cum on her lips",
+        ):
+            r = rules.classify(_req(prompt))
+            self.assertEqual(r.task_type, "edit.general_instruction")
+            self.assertEqual(r.targets[0]["label"], "face")
+            self.assertIn("cof", r.params_hints.get("loras") or [])
+            self.assertNotIn("clothes_remover", r.params_hints.get("loras") or [])
 
     def test_fluid_overlay_hair(self) -> None:
         r = rules.classify(_req("cumshot in her hair"))

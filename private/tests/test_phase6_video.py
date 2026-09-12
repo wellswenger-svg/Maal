@@ -102,6 +102,24 @@ class Phase6MotionTests(unittest.TestCase):
         self.assertIn("f4c3spl4sh", text.lower())
         self.assertIn("PENISLORA", text)
 
+    def test_freeform_sex_defaults_missionary(self) -> None:
+        m = extract_motion_hints("sex with a man")
+        self.assertIn("penetration", m["motion_kinds"])
+        self.assertIn("missionary", m["motion_kinds"])
+        self.assertNotIn("cowgirl", m["motion_kinds"])
+
+    def test_freeform_cum_loads_cumshot_kind(self) -> None:
+        m = extract_motion_hints("cum on her face")
+        self.assertIn("cumshot", m["motion_kinds"])
+        self.assertTrue(m["nsfw"])
+
+    def test_misc_oral_insertion_and_reveal_kinds(self) -> None:
+        oi = extract_motion_hints("oral insertion into her mouth")
+        self.assertIn("oral_insertion", oi["motion_kinds"])
+        self.assertIn("oral", oi["motion_kinds"])
+        rp = extract_motion_hints("reveal penis unzip")
+        self.assertIn("reveal_penis", rp["motion_kinds"])
+
     def test_profile_table(self) -> None:
         d = profile_video_params("draft")
         q = profile_video_params("quality")

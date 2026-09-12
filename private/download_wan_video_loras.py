@@ -83,6 +83,37 @@ DOWNLOADS: list[tuple[str, str, str]] = [
         "Wan2.2 - I2V - Missionary Sex - LOW 14B.safetensors",
         "Wan2.2_I2V_Missionary_LOW.safetensors",
     ),
+    # Freeform text-box poses (optional; skipped unless prompt names them)
+    (
+        "KeyOpening8063587/AssertiveCowgirl",
+        "Wan22-I2V-HIGH-Hip_Slammin_Assertive_Cowgirl.safetensors",
+        "Wan2.2_I2V_Cowgirl_HIGH.safetensors",
+    ),
+    (
+        "KeyOpening8063587/AssertiveCowgirl",
+        "Wan22-I2V-LOW-Hip_Slammin_Assertive_Cowgirl.safetensors",
+        "Wan2.2_I2V_Cowgirl_LOW.safetensors",
+    ),
+    (
+        "mega281/lora",
+        "Wan2.2 - I2V - Doggy Style - 14B_high_noise.safetensors",
+        "Wan2.2_I2V_Doggy_HIGH.safetensors",
+    ),
+    (
+        "mega281/lora",
+        "Wan2.2 - I2V - Doggy Style - 14B_low_noise.safetensors",
+        "Wan2.2_I2V_Doggy_LOW.safetensors",
+    ),
+    (
+        "Melonhead123/WAN2.2-I2V-Handjob-One-Two-handed",
+        "WAN-2.2-I2V-Handjob-HIGH-v1.safetensors",
+        "Wan2.2_I2V_Handjob_HIGH.safetensors",
+    ),
+    (
+        "Melonhead123/WAN2.2-I2V-Handjob-One-Two-handed",
+        "WAN-2.2-I2V-Handjob-LOW-v1.safetensors",
+        "Wan2.2_I2V_Handjob_LOW.safetensors",
+    ),
 ]
 
 # Appearance enhancers (rzgar Bernini pack) + optional extras without mirrors.

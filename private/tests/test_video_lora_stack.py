@@ -254,10 +254,80 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("DR34ML4Y_I2V_14B_HIGH_V2.safetensors", high_files)
         self.assertIn("female_gen_high", stack.applied_ids)
         self.assertNotIn("deepthroat_high", stack.applied_ids)
-        # Dropped optional pose LoRAs must not reappear.
-        self.assertNotIn("cowgirl_high", stack.applied_ids)
-        self.assertNotIn("doggy_high", stack.applied_ids)
-        self.assertNotIn("handjob_high", stack.applied_ids)
+
+    def test_cowgirl_doggy_handjob_load_from_text_kinds(self) -> None:
+        """Freeform text box kinds must load optional pose LoRAs when present."""
+        available = {
+            "PENISLORA_22_i2v_HIGH_e320.safetensors",
+            "Wan2.2_I2V_Cowgirl_HIGH.safetensors",
+            "Wan2.2_I2V_Cowgirl_LOW.safetensors",
+            "Wan2.2_I2V_Doggy_HIGH.safetensors",
+            "Wan2.2_I2V_Doggy_LOW.safetensors",
+            "Wan2.2_I2V_Handjob_HIGH.safetensors",
+            "Wan2.2_I2V_Handjob_LOW.safetensors",
+            "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+            "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
+            "male_genitalia_enhancer_high.safetensors",
+            "female_genitalia_enhancer_high.safetensors",
+        }
+        with self._patch_lora_dirs([]):
+            cg = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=True,
+                motion_kinds=["nsfw_action", "penetration", "cowgirl"],
+            )
+            dg = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=True,
+                motion_kinds=["nsfw_action", "penetration", "doggy"],
+            )
+            hj = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=True,
+                motion_kinds=["nsfw_action", "handjob"],
+            )
+        self.assertIn("cowgirl_high", cg.applied_ids)
+        self.assertIn("cowgirl_low", cg.applied_ids)
+        self.assertIn("doggy_high", dg.applied_ids)
+        self.assertIn("handjob_high", hj.applied_ids)
+        self.assertNotIn("deepthroat_high", hj.applied_ids)
+
+    def test_misc_oral_insertion_and_reveal_from_kinds(self) -> None:
+        """Staged misc/ LoRAs must resolve via Comfy subfolder paths."""
+        available = {
+            "miscellaneous/Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
+            "miscellaneous/Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
+            "miscellaneous/Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
+            "miscellaneous/Wan2.2_I2V_Reveal_Penis_LOW.safetensors",
+            "PENISLORA_22_i2v_HIGH_e320.safetensors",
+            "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+            "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
+        }
+        with self._patch_lora_dirs([]):
+            oi = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=True,
+                motion_kinds=["nsfw_action", "oral", "oral_insertion"],
+            )
+            rp = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=True,
+                motion_kinds=["nsfw_action", "reveal_penis"],
+            )
+        self.assertIn("oral_insertion_high", oi.applied_ids)
+        self.assertIn("oral_insertion_low", oi.applied_ids)
+        self.assertNotIn("deepthroat_high", oi.applied_ids)
+        high_files = [f.replace("\\", "/") for f, _ in oi.high]
+        self.assertTrue(
+            any(f.endswith("Wan2.2_I2V_Oral_Insertion_HIGH.safetensors") for f in high_files)
+        )
+        self.assertTrue(any("miscellaneous/" in f for f in high_files))
+        self.assertIn("reveal_penis_high", rp.applied_ids)
 
     def test_skips_corrupt_local_safetensors(self) -> None:
         """Truncated enhancer must not be queued (Sex crash: invalid size 95251)."""

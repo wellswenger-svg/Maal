@@ -65,17 +65,13 @@ _UNDRESS = re.compile(
     r"(clothes?|clothing|top|shirt)\s+(removal|remover))\b",
     re.I,
 )
-# Cum / fluid overlays on face, hair, glasses, lips — image edit (not video I2V)
+# Cum / fluid overlays — image edit (facial cumshot only; no lips/glasses targets)
 _FLUID = re.compile(
     r"\b(cumshot|cum\b|semen|ejaculat\w*|facial\s+(cum|splash|shot)|"
     r"splooge|spooge|jizz|spunk)\b",
     re.I,
 )
-_FLUID_TARGET_GLASSES = re.compile(
-    r"\b(glasses|spectacles?|specs|eyeglasses|lenses?)\b", re.I
-)
 _FLUID_TARGET_HAIR = re.compile(r"\b(hair|hairstyle|bangs|ponytail)\b", re.I)
-_FLUID_TARGET_LIPS = re.compile(r"\b(lips?|mouth|tongue)\b", re.I)
 _FLUID_TARGET_FACE = re.compile(
     r"\b(face|facial|cheeks?|forehead|chin|nose)\b", re.I
 )
@@ -88,6 +84,14 @@ _FLUID_WITH_UNDRESS = re.compile(
     r")\b",
     re.I,
 )
+# Misc facial LoRAs under loras/miscellaneous/ — keyword swaps cof for A/B alts.
+_MISC_FLUID_COF: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\bcuminator\b", re.I), "cof_misc_cuminator"),
+    (re.compile(r"\bcumhere\b", re.I), "cof_misc_cumhere"),
+    (re.compile(r"\b(massive\s+facial|facial\s+massive|cum\s+massive)\b", re.I), "cof_misc_massive"),
+    (re.compile(r"\b(char\s*friendly|friendly\s+facial)\b", re.I), "cof_misc_char_friendly"),
+    (re.compile(r"\b(not\s+another\s+facial|\bnaf\b)\b", re.I), "cof_misc_naf"),
+)
 _KEEP_CLOTHES = re.compile(
     r"\b("
     r"do\s+not\s+undress|don'?t\s+undress|keep\s+(her\s+)?(clothes|clothing)|"
@@ -95,6 +99,14 @@ _KEEP_CLOTHES = re.compile(
     r")\b",
     re.I,
 )
+
+
+def _fluid_cof_lora_id(text: str) -> str:
+    """Default facial cof, or misc A/B alt when the prompt names it."""
+    for pat, lid in _MISC_FLUID_COF:
+        if pat.search(text or ""):
+            return lid
+    return "cof"
 
 
 def _fluid_wants_undress(text: str) -> bool:
@@ -109,60 +121,9 @@ def _fluid_wants_undress(text: str) -> bool:
 
 
 def _fluid_target_label(text: str) -> str:
-    # Explicit primary targets beat broad "face" mentions in identity-lock boilerplate
-    lips_primary = bool(
-        re.search(
-            r"\b(on|onto|across)\s+(her\s+)?(lips?|mouth)\b|"
-            r"\b(lips?|mouth)\s+only\b|"
-            r"\bcum\s+on\s+(her\s+)?(lips?|mouth)\b",
-            text,
-            re.I,
-        )
-    )
-    glasses_primary = bool(
-        re.search(
-            r"\b(on|onto|across)\s+(her\s+)?(glasses|lenses|specs|spectacles?)\b|"
-            r"\b(glasses|lenses)\s+only\b|"
-            r"\bcum\s+on\s+(her\s+)?(glasses|lenses|specs)\b",
-            text,
-            re.I,
-        )
-    )
-    # Positive full-face coverage (not "without covering cheeks…")
-    full_face_cover = bool(
-        re.search(
-            r"\b("
-            r"facial\s+cumshot|entire\s+face|full\s+(facial|face)|"
-            r"(on|across)\s+(her\s+)?(face|cheeks?|forehead)"
-            r")\b",
-            text,
-            re.I,
-        )
-    )
-    if lips_primary and not full_face_cover:
-        return "lips"
-    if glasses_primary and not full_face_cover:
-        return "glasses"
-
-    # Facial cumshot wins over incidental "glasses" mentions in the same prompt
-    if _FLUID_TARGET_FACE.search(text) and not (
-        _FLUID_TARGET_GLASSES.search(text)
-        and not re.search(r"\b(face|facial|cheeks?|forehead)\b", text, re.I)
-    ):
-        if re.search(r"\b(face|facial|cheeks?|forehead)\b", text, re.I):
-            return "face"
-    if _FLUID_TARGET_GLASSES.search(text):
-        return "glasses"
-    if _FLUID_TARGET_LIPS.search(text) and not _FLUID_TARGET_FACE.search(text):
-        return "lips"
+    """Product keeps facial cumshot only — lips/glasses are not separate targets."""
     if _FLUID_TARGET_HAIR.search(text) and not _FLUID_TARGET_FACE.search(text):
         return "hair"
-    if _FLUID_TARGET_FACE.search(text):
-        return "face"
-    if _FLUID_TARGET_HAIR.search(text):
-        return "hair"
-    if _FLUID_TARGET_LIPS.search(text):
-        return "lips"
     return "face"
 
 
@@ -359,6 +320,7 @@ def classify(req: "GenerateRequest") -> RuleResult:
     # Cum / fluid overlays before face/hair/undress (avoids expression-only + undress traps).
     # Use general_instruction (Kontext-first) — add_object prefers Flux Fill and rewrites faces.
     if _FLUID.search(text) and req.mode != "vid":
+        cof_id = _fluid_cof_lora_id(text)
         if _fluid_wants_undress(text):
             return RuleResult(
                 task_type="edit.general_instruction",
@@ -370,7 +332,7 @@ def classify(req: "GenerateRequest") -> RuleResult:
                 identity={"enabled": True, "method": "pulid"},
                 post_hints=["face_detailer", "fluid_recolor"],
                 params_hints={
-                    "loras": ["clothes_remover", "nsfw_unlock", "cof"],
+                    "loras": ["clothes_remover", "nsfw_unlock", cof_id],
                     "nsfw_edit": True,
                     "fluid_edit": True,
                     "undress_fluid": True,
@@ -378,8 +340,8 @@ def classify(req: "GenerateRequest") -> RuleResult:
                 },
             )
         label = _fluid_target_label(text)
-        # Milder denoise — face/lips overlay only; clothes stay locked via mask.
-        denoise = 0.55 if label in ("face", "lips") else 0.60
+        # Milder denoise — facial overlay; clothes stay locked via mask.
+        denoise = 0.55 if label == "face" else 0.60
         return RuleResult(
             task_type="edit.general_instruction",
             confidence=0.93,
@@ -390,7 +352,7 @@ def classify(req: "GenerateRequest") -> RuleResult:
             identity={"enabled": True, "method": "pulid"},
             post_hints=["face_detailer", "fluid_recolor"],
             params_hints={
-                "loras": ["nsfw_unlock", "cof"],
+                "loras": ["nsfw_unlock", cof_id],
                 "nsfw_edit": True,
                 "fluid_edit": True,
                 "denoise": denoise,
@@ -432,6 +394,54 @@ def classify(req: "GenerateRequest") -> RuleResult:
                 "garment_mask": True,
             },
         )
+
+    # Freeform short enhance aliases ("enhance", "enhance boobs") → same reshape LoRAs
+    if req.mode != "vid" and not _FLUID.search(text) and not (
+        _EXPLICIT_UNDRESS.search(text) and not _KEEP_CLOTHES.search(text)
+    ):
+        short_enhance = bool(
+            re.search(
+                r"^\s*enhance(\s+(it|her|the))?\s*\.?\s*$",
+                user,
+                re.I,
+            )
+            or re.search(
+                r"\benhance\s+(boobs?|breasts?|ass|butts?|hips|cleavage|both|bust)\b",
+                text,
+                re.I,
+            )
+        )
+        if short_enhance:
+            if re.search(r"\b(ass|butts?|hips)\b", text, re.I) and not re.search(
+                r"\b(boobs?|breasts?|cleavage|bust|both)\b", text, re.I
+            ):
+                label = "ass"
+                loras = ["nsfw_unlock", "ass_enhance"]
+            elif re.search(r"\b(boobs?|breasts?|cleavage|bust)\b", text, re.I) and not re.search(
+                r"\b(ass|butts?|hips|both)\b", text, re.I
+            ):
+                label = "breasts"
+                loras = ["nsfw_unlock", "breast_enhance"]
+            else:
+                label = "curves"
+                loras = ["nsfw_unlock", "breast_enhance", "ass_enhance"]
+            return RuleResult(
+                task_type="edit.keep_outfit_reshape",
+                confidence=0.91,
+                bypass_vlm=True,
+                reason="freeform_short_enhance",
+                targets=[{"label": label, "role": "reshape_region"}],
+                perception=["garment"],
+                identity={"enabled": True, "method": "pulid"},
+                post_hints=["face_detailer", "color_match"],
+                params_hints={
+                    "loras": loras,
+                    "nsfw_edit": True,
+                    "clothed_enhance": True,
+                    "denoise": 0.60,
+                    "garment_mask": True,
+                },
+            )
 
     # Rear pose change BEFORE plain undress so "nude all fours" keeps pose intent
     if _POSE_REAR.search(text) and req.mode != "vid":

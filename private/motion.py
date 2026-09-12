@@ -43,7 +43,17 @@ _HANDJOB = re.compile(
     re.I,
 )
 _CUMSHOT = re.compile(
-    r"\b(cumshot|cum[\s-]?shot|facial|ejaculat)\b",
+    r"\b(cumshot|cum[\s-]?shot|facial|ejaculat|cum)\b",
+    re.I,
+)
+_ORAL_INSERTION = re.compile(
+    r"\b(oral\s*insertion|insert(ing|ion)?\s+(into\s+)?(her\s+)?(mouth|lips)|"
+    r"tip\s+into\s+(her\s+)?mouth|mouth\s+insertion)\b",
+    re.I,
+)
+_REVEAL_PENIS = re.compile(
+    r"\b(reveal\s+(his\s+)?penis|penis\s+reveal|show\s+(his\s+)?(erect\s+)?penis|"
+    r"pull\s+out\s+(his\s+)?penis|unzip|flash\s+(his\s+)?penis)\b",
     re.I,
 )
 
@@ -51,6 +61,8 @@ _CUMSHOT = re.compile(
 POSE_SCAFFOLDS: dict[str, str] = {
     "oral": "continuous blowjob — one penis fully in her mouth already, slow steady in-and-out head bobbing",
     "deepthroat": "continuous deep oral — one penis deep in her mouth already, slow steady thrusting",
+    "oral_insertion": "oral insertion — erect penis tip entering her mouth",
+    "reveal_penis": "reveal erect penis in frame",
     "missionary": "missionary thrusting with erect penis in vagina",
     "cowgirl": "cowgirl riding with erect penis in vagina",
     "doggy": "doggy thrusting with erect penis entering from behind",
@@ -63,6 +75,8 @@ POSE_SCAFFOLDS: dict[str, str] = {
 POSE_SEQUENCES: dict[str, str] = {
     "oral": "already mid continuous blowjob with one connected penis, then steady head bobbing. ",
     "deepthroat": "already mid deep oral with one connected penis, then steady thrusting. ",
+    "oral_insertion": "erect tip approaches lips, then enters mouth. ",
+    "reveal_penis": "man appears, then erect penis is revealed. ",
     "missionary": "missionary position, then penetration, then continuous thrusting. ",
     "cowgirl": "cowgirl mount, then penetration, then continuous riding. ",
     "doggy": "doggy position, then penetration, then continuous thrusting. ",
@@ -74,6 +88,8 @@ POSE_SEQUENCES: dict[str, str] = {
 # Preferred sequence when multiple pose kinds match (most specific first).
 _SEQUENCE_PRIORITY = (
     "deepthroat",
+    "oral_insertion",
+    "reveal_penis",
     "missionary",
     "cowgirl",
     "doggy",
@@ -113,6 +129,27 @@ def extract_motion_hints(text: str) -> dict[str, Any]:
             kinds.append("handjob")
         if _CUMSHOT.search(t):
             kinds.append("cumshot")
+        if _ORAL_INSERTION.search(t):
+            kinds.append("oral_insertion")
+            if "oral" not in kinds:
+                kinds.append("oral")
+        if _REVEAL_PENIS.search(t):
+            kinds.append("reveal_penis")
+        # Freeform "sex"/"fuck" without a named pose → missionary LoRA (Sex button parity).
+        if "penetration" in kinds and not any(
+            k in kinds
+            for k in (
+                "missionary",
+                "cowgirl",
+                "doggy",
+                "oral",
+                "deepthroat",
+                "handjob",
+                "oral_insertion",
+                "reveal_penis",
+            )
+        ):
+            kinds.append("missionary")
         # Oral: keep motion readable (not frozen tip-lick) but not jumpcut-fast.
         if "oral" in kinds or "deepthroat" in kinds:
             amplitude = "medium"

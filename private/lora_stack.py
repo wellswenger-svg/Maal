@@ -15,6 +15,8 @@ LIGHTX2V_STEPS = 8
 
 # Shared Comfy + install-local probe paths (same spirit as edit_runner).
 _SHARED_LORAS = Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras")
+# Staged / secondary weights — delete models/loras/miscellaneous/ when retiring.
+MISC_SUBDIR = "miscellaneous"
 
 
 @dataclass(frozen=True)
@@ -91,6 +93,7 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
         0.45,
         (
             "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
+            f"{MISC_SUBDIR}/DR34ML4Y_I2V_14B_HIGH.safetensors",
             "DR34ML4Y_I2V_14B_HIGH.safetensors",
             "DR34ML4Y_AllInOne.safetensors",
             "wan2.2-i2v-high-dr34ml4y-all-in-one-nsfw.safetensors",
@@ -150,6 +153,7 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
         0.40,
         (
             "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
+            f"{MISC_SUBDIR}/DR34ML4Y_I2V_14B_LOW.safetensors",
             "DR34ML4Y_I2V_14B_LOW.safetensors",
             "DR34ML4Y_AllInOne.safetensors",
             "wan2.2-i2v-low-dr34ml4y-all-in-one-nsfw.safetensors",
@@ -157,8 +161,7 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
     ),
 )
 
-# Pose LoRAs — optional; skipped unless matching motion kind is present.
-# Only missionary is product-backed (Sex button); DR34 covers other acts.
+# Pose LoRAs — optional; loaded when freeform text / Sex button sets that motion kind.
 OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "missionary_high",
@@ -186,11 +189,138 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
         ),
         optional=True,
     ),
+    LoraSpec(
+        "cowgirl_high",
+        "high",
+        0.95,
+        (
+            "Wan2.2_I2V_Cowgirl_HIGH.safetensors",
+            "Wan22-I2V-HIGH-Hip_Slammin_Assertive_Cowgirl.safetensors",
+            "Wan2.2_Assertive_Cowgirl_I2V_HIGH.safetensors",
+            "Assertive_Cowgirl_Wan22_I2V_HIGH.safetensors",
+            "wan22_assertive_cowgirl_high.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "cowgirl_low",
+        "low",
+        0.90,
+        (
+            "Wan2.2_I2V_Cowgirl_LOW.safetensors",
+            "Wan22-I2V-LOW-Hip_Slammin_Assertive_Cowgirl.safetensors",
+            "Wan2.2_Assertive_Cowgirl_I2V_LOW.safetensors",
+            "Assertive_Cowgirl_Wan22_I2V_LOW.safetensors",
+            "wan22_assertive_cowgirl_low.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "doggy_high",
+        "high",
+        0.95,
+        (
+            "Wan2.2_I2V_Doggy_HIGH.safetensors",
+            "Wan2.2 - I2V - Doggy Style - 14B_high_noise.safetensors",
+            "Wan2.2-I2V-DoggyStyle-14B_high_noise.safetensors",
+            "Wan2.2_I2V_Doggy_Style_14B_high_noise.safetensors",
+            "mql_casting_sex_doggy_kneel_diagonally_behind_vagina_wan22_i2v_v1_high_noise.safetensors",
+            "iGoon - Blink_Front_Doggystyle_I2V_HIGH.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "doggy_low",
+        "low",
+        0.90,
+        (
+            "Wan2.2_I2V_Doggy_LOW.safetensors",
+            "Wan2.2 - I2V - Doggy Style - 14B_low_noise.safetensors",
+            "Wan2.2-I2V-DoggyStyle-14B_low_noise.safetensors",
+            "Wan2.2_I2V_Doggy_Style_14B_low_noise.safetensors",
+            "mql_casting_sex_doggy_kneel_diagonally_behind_vagina_wan22_i2v_v1_low_noise.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "handjob_high",
+        "high",
+        0.95,
+        (
+            "Wan2.2_I2V_Handjob_HIGH.safetensors",
+            "WAN-2.2-I2V-Handjob-HIGH-v1.safetensors",
+            "Wan2.2 - T2V - POV Hand Job - HIGH 14B.safetensors",
+            "WAN-2.2-I2V-HandjobBlowjobCombo-HIGH-v1.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "handjob_low",
+        "low",
+        0.90,
+        (
+            "Wan2.2_I2V_Handjob_LOW.safetensors",
+            "WAN-2.2-I2V-Handjob-LOW-v1.safetensors",
+            "Wan2.2 - T2V - POV Hand Job - LOW 14B.safetensors",
+            "WAN-2.2-I2V-HandjobBlowjobCombo-LOW-v1.safetensors",
+        ),
+        optional=True,
+    ),
+)
+
+# Misc / staged-for-removal — files live under models/loras/miscellaneous/.
+# Wired for remote text-box use; delete the folder when retiring these.
+MISC_SPECS: tuple[LoraSpec, ...] = (
+    LoraSpec(
+        "oral_insertion_high",
+        "high",
+        0.90,
+        (
+            f"{MISC_SUBDIR}/Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
+            "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "oral_insertion_low",
+        "low",
+        0.85,
+        (
+            f"{MISC_SUBDIR}/Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
+            "Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "reveal_penis_high",
+        "high",
+        0.90,
+        (
+            f"{MISC_SUBDIR}/Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
+            "Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "reveal_penis_low",
+        "low",
+        0.85,
+        (
+            f"{MISC_SUBDIR}/Wan2.2_I2V_Reveal_Penis_LOW.safetensors",
+            "Wan2.2_I2V_Reveal_Penis_LOW.safetensors",
+        ),
+        optional=True,
+    ),
 )
 
 # Pose LoRA id prefix → required motion kind (only load when that pose is requested).
 _POSE_LORA_KIND: dict[str, str] = {
     "missionary": "missionary",
+    "cowgirl": "cowgirl",
+    "doggy": "doggy",
+    "handjob": "handjob",
+    "oral_insertion": "oral_insertion",
+    "reveal_penis": "reveal_penis",
 }
 
 
@@ -208,24 +338,47 @@ def _lora_dirs(settings: Settings | None = None) -> list[Path]:
 
 
 def _name_in_available(name: str, available: set[str]) -> Optional[str]:
-    """Return the Comfy-facing basename if `name` is listed (path or basename)."""
-    if name in available:
-        return Path(name).name
-    target = Path(name).name.lower()
+    """Return the Comfy-facing path (may include miscellaneous/)."""
+    name_norm = name.replace("\\", "/")
+    if name_norm in available:
+        return name_norm
+    # Also accept Windows-style catalog entries.
+    if name_norm.replace("/", "\\") in available:
+        return name_norm
+    target = Path(name_norm).name.lower()
+    preferred: Optional[str] = None
     for item in available:
-        if Path(item).name.lower() == target:
-            return Path(item).name
-    return None
+        item_n = item.replace("\\", "/")
+        if Path(item_n).name.lower() != target:
+            continue
+        # Prefer subfolder path so LoraLoader can find moved misc weights.
+        if preferred is None or ("/" in item_n and "/" not in preferred):
+            preferred = item_n
+    return preferred
 
 
-def _local_lora_path(
-    name: str, dirs: list[Path]
-) -> Optional[Path]:
+def _local_lora_path(name: str, dirs: list[Path]) -> Optional[Path]:
+    name_norm = name.replace("\\", "/")
+    base = Path(name_norm).name
     for d in dirs:
-        path = d / name
-        if path.is_file() and path.stat().st_size > 1000:
-            return path
+        for candidate in (
+            d / name_norm,
+            d / MISC_SUBDIR / base,
+            d / base,
+        ):
+            if candidate.is_file() and candidate.stat().st_size > 1000:
+                return candidate
     return None
+
+
+def _comfy_rel_from_local(path: Path, dirs: list[Path]) -> str:
+    """Map a local path to the Comfy lora_name (subdirectory-aware)."""
+    for d in dirs:
+        try:
+            return path.relative_to(d).as_posix()
+        except ValueError:
+            continue
+    return path.name
 
 
 def _safetensors_readable(path: Path) -> bool:
@@ -286,7 +439,7 @@ def find_lora_file(
             continue
         if not _safetensors_readable(path):
             continue
-        return name
+        return _comfy_rel_from_local(path, dirs)
 
     # Remote-only API: never skip core LoRAs just because Render lacks E:\\
     # Treat empty catalog the same as unreachable — tunnel glitches return [].
@@ -348,6 +501,10 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     for prefix, need_kind in _POSE_LORA_KIND.items():
         if spec_id.startswith(prefix + "_") or spec_id == prefix:
             return need_kind in kinds
+
+    # Oral insertion (misc): skip Blink so tip-in LoRA owns the motion.
+    if "oral_insertion" in kinds and spec_id.startswith("deepthroat"):
+        return False
 
     # Oral BJ full-sequence: Blink drives bobbing; DR34ML4Y V2 adds partner body.
     if spec_id.startswith("deepthroat"):
@@ -412,6 +569,7 @@ def resolve_video_lora_stack(
     specs = list(CORE_SPECS)
     if include_optional:
         specs.extend(OPTIONAL_SPECS)
+        specs.extend(MISC_SPECS)
     kinds = {str(k) for k in (motion_kinds or [])}
 
     high_raw: list[tuple[str, float, str]] = []

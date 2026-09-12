@@ -108,6 +108,8 @@ def _lora_on_disk(filename: str) -> bool:
         # Fallback: shared + local model folders
         cands = [
             Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras") / filename,
+            Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras\miscellaneous")
+            / Path(filename).name,
             Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\controlnet") / filename,
         ]
         try:
@@ -139,7 +141,11 @@ def _lora_available(filename: str) -> bool:
     try:
         from backend.ai_engine.models.catalog import _comfy_model_roots
 
-        if not _comfy_model_roots() and filename in set(LORA_FILES.values()):
+        if not _comfy_model_roots() and (
+            filename in set(LORA_FILES.values())
+            or Path(filename).name
+            in {Path(v).name for v in LORA_FILES.values()}
+        ):
             return True
     except Exception:
         pass
@@ -216,7 +222,7 @@ def _select_loras(
         ids = ["clothes_remover", *ids]
         if "nsfw_unlock" not in ids:
             ids.append("nsfw_unlock")
-        if "cof" not in ids:
+        if not any(str(x) == "cof" or str(x).startswith("cof_misc_") for x in ids):
             ids.append("cof")
     # Face-only fluid / clothed size-up / clothed pose
     elif fluid or clothed or (pose_edit and not pose_undress):
@@ -224,7 +230,10 @@ def _select_loras(
         if "nsfw_unlock" not in ids:
             ids.append("nsfw_unlock")
         # Mild COF helps slimy ropes; high weights → opaque paint mask.
-        if fluid and not undress_fluid and "cof" not in ids:
+        # Don't clobber misc facial A/B ids (cof_misc_*).
+        if fluid and not undress_fluid and not any(
+            str(x) == "cof" or str(x).startswith("cof_misc_") for x in ids
+        ):
             ids.append("cof")
     # Kontext undress: clothes_remover first, then unlock
     elif use_kontext and undress and "clothes_remover" not in ids:
@@ -286,6 +295,11 @@ def _select_loras(
             "nsfw_unlock": unlock_w,
             # Flux.1 D facial LoRAs: strong coverage; gel composite holds facing/identity.
             "cof": cof_w,
+            "cof_misc_cuminator": cof_w,
+            "cof_misc_cumhere": cof_w,
+            "cof_misc_massive": min(cof_w, 1.05),
+            "cof_misc_char_friendly": cof_w,
+            "cof_misc_naf": min(cof_w, 1.05),
             "breast_enhance": float(
                 __import__("os").environ.get("KEEP_OUTFIT_BREAST_STRENGTH", "0.82")
                 or 0.82
