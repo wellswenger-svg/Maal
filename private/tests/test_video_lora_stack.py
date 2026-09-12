@@ -153,6 +153,7 @@ class LoraStackResolveTests(unittest.TestCase):
             )
         self.assertIn("penis_lora_high", stack.applied_ids)
         self.assertIn("deepthroat_high", stack.applied_ids)
+        self.assertIn("dr34ml4y_high", stack.applied_ids)
         self.assertNotIn("oral_insertion_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
@@ -185,19 +186,21 @@ class LoraStackResolveTests(unittest.TestCase):
             )
         self.assertIn("penis_lora_high", stack.applied_ids)
         self.assertIn("deepthroat_high", stack.applied_ids)
+        self.assertIn("dr34ml4y_high", stack.applied_ids)
+        self.assertIn("dr34ml4y_low", stack.applied_ids)
         self.assertNotIn("oral_insertion_high", stack.applied_ids)
         self.assertNotIn("reveal_penis_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         self.assertNotIn("female_gen_high", stack.applied_ids)
-        self.assertNotIn("dr34ml4y_high", stack.applied_ids)
         self.assertNotIn("cumshot_high", stack.applied_ids)
         self.assertNotIn("cumshot_low", stack.applied_ids)
 
-    def test_deepthroat_kind_loads_deepthroat_lora(self) -> None:
+    def test_oral_stacks_blink_and_dr34(self) -> None:
         available = {
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
+            "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
         }
         with patch.object(ls, "_lora_dirs", return_value=[]):
             stack = ls.resolve_video_lora_stack(
@@ -207,6 +210,7 @@ class LoraStackResolveTests(unittest.TestCase):
                 motion_kinds=["nsfw_action", "oral", "deepthroat"],
             )
         self.assertIn("deepthroat_high", stack.applied_ids)
+        self.assertIn("dr34ml4y_high", stack.applied_ids)
         self.assertNotIn("oral_insertion_high", stack.applied_ids)
 
     def test_missionary_loads_pose_lora_skips_deepthroat(self) -> None:

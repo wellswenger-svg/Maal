@@ -61,8 +61,8 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "PENISLORA_22_i2v_HIGH_e191.safetensors",
         ),
     ),
-    # iGOON Blink Blowjob — continuity mode (no jumpcut). 0.65 OOMs/dies on tunnel;
-    # 0.55 + full-sequence prompt is the stable full-BJ path.
+    # iGOON Blink Blowjob — full-sequence continuity (no jumpcut).
+    # 0.65 OOMs/dies on tunnel; 0.55 + 5s (+ mild DR34) is the full-BJ path.
     LoraSpec(
         "deepthroat_high",
         "high",
@@ -481,8 +481,8 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
         if spec_id.startswith(prefix + "_") or spec_id == prefix:
             return need_kind in kinds
 
-    # Blink owns oral BJ (better act + continuity than Insertion alone).
-    # Do not stack Oral Insertion — dual oral LoRAs softens/blurs the face.
+    # Oral BJ full-sequence: Blink drives bobbing; DR34ML4Y V2 adds partner body.
+    # Needs ≥5s — 3s collapses to tip-insertion. Skip Oral Insertion (face mush).
     if spec_id.startswith("oral_insertion"):
         return False
     if spec_id.startswith("deepthroat"):
@@ -494,11 +494,9 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
         return False
 
     # Oral-only (no penetration / handjob): skip vagina + finish LoRAs.
-    # Also drop generic DR34ML4Y so specialized oral LoRAs keep the strength budget.
+    # Keep Blink + DR34 (gold motion @ 5s + V2 partner cue).
     if oral and not penetration and not handjob:
         if spec_id.startswith("female_gen"):
-            return False
-        if spec_id.startswith("dr34ml4y"):
             return False
         if spec_id.startswith("cumshot") and not cumshot:
             return False
@@ -575,7 +573,18 @@ def resolve_video_lora_stack(
                 missing.append(spec.id)
             continue
         applied.append(spec.id)
-        entry = (found, float(spec.strength), spec.id)
+        strength = float(spec.strength)
+        oral = "oral" in kinds or "deepthroat" in kinds
+        penetration = "penetration" in kinds or any(
+            p in kinds for p in ("missionary", "cowgirl", "doggy")
+        )
+        # Oral + Blink + DR34: soften PENISLORA/DR34 so they don't invent a 2nd shaft.
+        if nsfw and oral and not penetration:
+            if spec.id.startswith("penis_lora"):
+                strength = min(strength, 0.82 if spec.stage == "high" else 0.78)
+            elif spec.id.startswith("dr34ml4y"):
+                strength = min(strength, 0.32 if spec.stage == "high" else 0.28)
+        entry = (found, strength, spec.id)
         if spec.stage == "high":
             high_raw.append(entry)
         else:

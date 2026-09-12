@@ -49,8 +49,8 @@ _CUMSHOT = re.compile(
 
 # Pose id → short motion cue (kept tiny — long scaffolds dilute Wan face lock).
 POSE_SCAFFOLDS: dict[str, str] = {
-    "oral": "continuous blowjob — penis fully in her mouth, slow steady in-and-out head bobbing",
-    "deepthroat": "continuous deep oral — penis deep in her mouth, slow steady thrusting",
+    "oral": "continuous blowjob — one penis fully in her mouth already, slow steady in-and-out head bobbing",
+    "deepthroat": "continuous deep oral — one penis deep in her mouth already, slow steady thrusting",
     "missionary": "missionary thrusting with erect penis in vagina",
     "cowgirl": "cowgirl riding with erect penis in vagina",
     "doggy": "doggy thrusting with erect penis entering from behind",
@@ -61,8 +61,8 @@ POSE_SCAFFOLDS: dict[str, str] = {
 
 # Kept for tests / callers; NSFW scaffold no longer dumps these (CLIP dilution).
 POSE_SEQUENCES: dict[str, str] = {
-    "oral": "man appears, she takes his penis fully into her mouth, then continuous blowjob. ",
-    "deepthroat": "man appears, she takes him deep, then continuous deep oral. ",
+    "oral": "already mid continuous blowjob with one connected penis, then steady head bobbing. ",
+    "deepthroat": "already mid deep oral with one connected penis, then steady thrusting. ",
     "missionary": "missionary position, then penetration, then continuous thrusting. ",
     "cowgirl": "cowgirl mount, then penetration, then continuous riding. ",
     "doggy": "doggy position, then penetration, then continuous thrusting. ",
@@ -233,15 +233,23 @@ def scaffold_i2v_prompt(
             edit,
         )
         edit = re.sub(r"\s{2,}", " ", edit).strip(" .")
-        # Partner-enter cue for oral — keep ONE continuous camera (no jumpcut).
-        if not re.search(
-            r"a man appears and she sucks his (erect )?penis",
+        # Mid-sequence from frame 1 — "man appears"/tip-approach invents a second floating penis.
+        edit = re.sub(
+            r"(?i)\s*a man appears and she sucks his (erect )?penis[^.]*(?:\.|$)",
+            ". ",
             edit,
-            re.I,
-        ):
+        )
+        edit = re.sub(r"\s{2,}", " ", edit).strip(" .")
+        if not re.search(r"already (mid |in )?(continuous )?blowjob|penis already (fully )?in", edit, re.I):
             edit = (
-                f"{edit}. A man appears and she sucks his penis — "
-                "takes him fully into her mouth, then continuous blowjob"
+                f"{edit}. Start already mid continuous blowjob: one erect penis already "
+                "fully in her mouth with lips sealed on the shaft — not tip approach, "
+                "not licking first, not insertion intro"
+            )
+        if not re.search(r"only one penis|exactly one penis|single penis|one connected penis", edit, re.I):
+            edit = (
+                f"{edit}. Exactly one penis attached to one man (torso+hips visible); "
+                "never a second floating penis beside her mouth or hand"
             )
         if not re.search(r"fully into her mouth|continuous blowjob|penis fully in", edit, re.I):
             edit = (
@@ -277,8 +285,9 @@ def scaffold_i2v_prompt(
             "Same clothes colors and background. "
         )
         anatomy = (
-            "Man fully in frame (torso, hips, hands); erect penis clearly visible; "
-            "no floating penis, no censored blur. "
+            "Exactly one man with exactly one erect penis connected to his torso and hips; "
+            "no second penis, no floating duplicate shaft, no tip-only insertion intro; "
+            "she is already mid blowjob with that single penis in her mouth. "
         )
         consistency = (
             "ONE continuous shot only — same angle, same framing, no cuts, no jumpcut, "

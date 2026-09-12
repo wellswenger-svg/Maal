@@ -60,12 +60,13 @@ class Phase6MotionTests(unittest.TestCase):
         self.assertIn("PENISLORA", text)
         self.assertIn("bl0wj0b", text.lower())
         self.assertIn("erect penis", text.lower())
-        self.assertIn("a man appears and she sucks his penis", text.lower())
+        self.assertIn("already mid continuous blowjob", text.lower())
+        self.assertIn("exactly one penis", text.lower())
+        self.assertNotIn("a man appears and she sucks his penis", text.lower())
         self.assertIn("identical face", text.lower())
-        self.assertIn("man fully in frame", text.lower())
         # Keep NSFW scaffolds bounded — long dumps mush start-frame identity.
-        # Oral path includes continuity + partner-enter cues by design.
-        self.assertLess(len(text), 1300)
+        # Oral path includes continuity + single-penis mid-BJ cues by design.
+        self.assertLess(len(text), 1800)
         self.assertNotIn("follow this sequence", text.lower())
         self.assertNotIn("scene lock", text.lower())
 

@@ -88,8 +88,11 @@ async def run_i2v_v1(
     oralish = nsfw and ("oral" in kinds_l or "deepthroat" in kinds_l)
     # Facial cumshot also rewrites the start face hard — same identity knobs as oral.
     facelock = oralish or (nsfw and "cumshot" in kinds_l)
-    if facelock:
-        # Face lock first: high-noise invents partner/fluid but must not remake her face.
+    if oralish:
+        # Match gold oral blur-fix (hnf 0.22): enough partner invent, less tip-only stall.
+        high_noise_fraction = 0.22
+    elif facelock:
+        # Cumshot face-lock: keep lower invent so finish LoRA doesn't wipe identity.
         high_noise_fraction = 0.18
     elif nsfw:
         high_noise_fraction = 0.34
@@ -102,8 +105,9 @@ async def run_i2v_v1(
         # Cap oral/cumshot steps at 52 on Colab tunnel — 60+ often dies mid-run on 3–5s.
         steps = max(steps, 52 if facelock else 42)
         if facelock:
-            # Keep 16fps so 3s has enough frames for full BJ sequence (12fps was tip-only).
+            # Keep 16fps for BJ frame density (12fps was tip-only).
             fps = max(fps, 16)
+            # Caller controls length (3s A/B vs 5s full-sequence). Do not auto-bump.
             if video_seconds is not None:
                 length = frames_for_seconds(float(video_seconds), fps)
             motion["amplitude"] = "medium"

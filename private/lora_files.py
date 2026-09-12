@@ -34,5 +34,7 @@ LORA_DEFAULT_STRENGTH = {
 
 WAN_NEGATIVE_EXTRA = (
     "censored, mosaic, collapsed anatomy, missing partner, "
-    "floating anatomy, disembodied body part, missing torso"
+    "floating anatomy, disembodied body part, missing torso, "
+    "two penises, double penis, second penis, duplicate penis, "
+    "extra penis, twin shafts, floating penis beside mouth"
 )
