@@ -1154,12 +1154,21 @@ async def run_flux_edit(
             best_data = data
             best_skin = _chest_skin_delta(image_bytes, data)
             best_vol = _chest_change_mae(image_bytes, data)
-            # Rank: cloth-safe first, then volume near gold-typical (~8–16 chest MAE).
-            best_rank = (
-                max(0.0, best_skin - 0.02),
-                abs(best_vol - 12.0),
-                -best_vol if best_vol < 5.0 else 0.0,
-            )
+
+            def _cloth_rank(skin: float, vol: float) -> tuple:
+                # Prefer real bust change over “almost identity” cloth-safe frames.
+                # Prior rank put skin first, so near-zero volume could win forever.
+                undress = 1 if skin > 0.12 else 0
+                weak_vol = 1 if vol < 5.5 else 0
+                return (
+                    undress,
+                    weak_vol,
+                    max(0.0, skin - 0.04),
+                    abs(vol - 12.0),
+                    -vol,
+                )
+
+            best_rank = _cloth_rank(best_skin, best_vol)
             best_tag = "primary"
             for att in uniq_attempts[1:]:
                 # Early stop when cloth-safe and volume in the gold-typical band.
@@ -1188,11 +1197,7 @@ async def run_flux_edit(
                     continue
                 skin_d = _chest_skin_delta(image_bytes, cand)
                 vol = _chest_change_mae(image_bytes, cand)
-                rank = (
-                    max(0.0, skin_d - 0.02),
-                    abs(vol - 12.0),
-                    -vol if vol < 5.0 else 0.0,
-                )
+                rank = _cloth_rank(skin_d, vol)
                 if rank < best_rank:
                     best_data, best_skin, best_vol, best_rank, best_tag = (
                         cand,
