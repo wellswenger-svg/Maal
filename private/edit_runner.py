@@ -1133,11 +1133,11 @@ async def run_flux_edit(
                 {"seed": base_seed, "breast": None, "guidance": g, "tag": "primary"},
             ]
             if not skip_retry:
+                # Cap at 2 salvages — 4 full Kontext gens was ~10–15 min and OOMed
+                # the 512Mi Render worker (each candidate holds a full PNG in RAM).
                 attempts.extend(
                     [
-                        {"seed": 7, "breast": 0.82, "guidance": 3.8, "tag": "s7"},
                         {"seed": 7, "breast": 0.95, "guidance": 4.2, "tag": "s7_hard"},
-                        {"seed": 99, "breast": 0.95, "guidance": 4.2, "tag": "s99_hard"},
                         {"seed": 21, "breast": 0.82, "guidance": 3.8, "tag": "s21"},
                     ]
                 )
@@ -1168,11 +1168,14 @@ async def run_flux_edit(
                     -vol,
                 )
 
+            def _good_enough(skin: float, vol: float) -> bool:
+                # Stop retrying once cloth is safe and volume is in band.
+                return skin < 0.08 and vol >= 6.0
+
             best_rank = _cloth_rank(best_skin, best_vol)
             best_tag = "primary"
             for att in uniq_attempts[1:]:
-                # Early stop when cloth-safe and volume in the gold-typical band.
-                if best_skin < 0.035 and 6.0 <= best_vol <= 16.0:
+                if _good_enough(best_skin, best_vol):
                     break
                 stack_att = lora_stack
                 if att["breast"] is not None:
@@ -1206,10 +1209,18 @@ async def run_flux_edit(
                         rank,
                         str(att["tag"]),
                     )
+                else:
+                    del cand
             data = best_data
             if best_tag != "primary":
                 extra_tags.append(f"cloth_retry:{best_tag}")
             extra_tags.append(f"cloth_skin:{best_skin:.3f}")
+            try:
+                import gc as _gc_retry
+
+                _gc_retry.collect()
+            except Exception:
+                pass
 
             # Kontext rewrites the full frame — do not soft-paste the start
             # torso (that caused ghosting). Only lock the face.
