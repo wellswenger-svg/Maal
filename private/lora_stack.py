@@ -13,6 +13,11 @@ STAGE_STRENGTH_CAP = 4.5
 NSFW_STAGE_STRENGTH_CAP = 4.8
 LIGHTX2V_STEPS = 8
 
+# Debug toggle: oral-only runs skip DR34ML4Y + PENISLORA and use Blink Blowjob
+# solo, to isolate whether stacking (vs. the base LoRA) is the distortion source.
+# Flip back to False once the test batch is reviewed.
+ORAL_ISOLATION_TEST = True
+
 # Shared Comfy + install-local probe paths (same spirit as edit_runner).
 _SHARED_LORAS = Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras")
 # Staged / secondary weights — delete models/loras/miscellaneous/ when retiring.
@@ -512,6 +517,12 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     # Male gen enhancer is redundant when PENISLORA is on for oral-only.
     if oral and not penetration and spec_id.startswith("male_gen"):
         return False
+
+    # Isolation test: oral-only runs go Blink-solo (no DR34ML4Y/PENISLORA) to
+    # check whether the 3-way stack, not the base LoRA, is causing distortion.
+    if ORAL_ISOLATION_TEST and oral and not penetration and not handjob:
+        if spec_id.startswith("dr34ml4y") or spec_id.startswith("penis_lora"):
+            return False
 
     # Oral-only (no penetration / handjob): skip vagina + finish LoRAs.
     # Keep Blink + DR34 (gold motion @ 5s + V2 partner cue).
