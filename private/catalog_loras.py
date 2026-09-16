@@ -38,6 +38,20 @@ def register(add) -> None:
         download_source="https://civitai.com/models/1802814/bigger-breasts-and-butts-flux-kontext-lora",
     )
     add(
+        "lora.video_deepthroat_jfj_high",
+        filename="jfj-deepthroat-W22-I2V-HN.safetensors",
+        role="lora",
+        status="installed",
+        download_source="https://civitai.com/models/1497390",
+    )
+    add(
+        "lora.video_deepthroat_jfj_low",
+        filename="jfj-deepthroat-W22-I2V-LN.safetensors",
+        role="lora",
+        status="installed",
+        download_source="https://civitai.com/models/1497390",
+    )
+    add(
         "lora.video_lightx2v_unc_high",
         filename="Wan2.2_LightX2V_high_n54vv.safetensors",
         role="lora",

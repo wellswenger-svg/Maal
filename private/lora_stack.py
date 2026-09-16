@@ -68,13 +68,16 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
             "PENISLORA_22_i2v_HIGH_e191.safetensors",
         ),
     ),
-    # iGOON Blink Blowjob — full-sequence continuity (no jumpcut).
-    # 0.65 OOMs/dies on tunnel; 0.55 + 5s (+ mild DR34) is the full-BJ path.
+    # JeeFJ deepthroat/blowjob (Civitai 1497390) — trained specifically on
+    # Wan Video 2.2 I2V-A14B, 176k+ downloads, 99.8% approval. Creator-recommended
+    # weight is 1.0; old Blink Blowjob kept as fallback if the file goes missing.
+    # 0.65 OOMs'd Blink on tunnel; keep an eye on VRAM if reverting to it.
     LoraSpec(
         "deepthroat_high",
         "high",
-        0.55,
+        1.0,
         (
+            "jfj-deepthroat-W22-I2V-HN.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_HIGH.safetensors",
             "iGOON_Blink_Blowjob_I2V_HIGH.safetensors",
         ),
@@ -136,8 +139,9 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "deepthroat_low",
         "low",
-        0.50,
+        1.0,
         (
+            "jfj-deepthroat-W22-I2V-LN.safetensors",
             "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
             "iGOON_Blink_Blowjob_I2V_LOW.safetensors",
         ),
