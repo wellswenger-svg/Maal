@@ -60,13 +60,16 @@ class Phase6MotionTests(unittest.TestCase):
         self.assertIn("PENISLORA", text)
         self.assertIn("bl0wj0b", text.lower())
         self.assertIn("erect penis", text.lower())
-        self.assertIn("a man appears", text.lower())
+        self.assertIn("exact woman in the start image", text.lower())
         self.assertIn("exactly one", text.lower())
         self.assertIn("identical face", text.lower())
         # Keep NSFW scaffolds bounded — long dumps mush start-frame identity.
         self.assertLess(len(text), 1800)
         self.assertNotIn("follow this sequence", text.lower())
         self.assertNotIn("scene lock", text.lower())
+        # Whole oral prompt — no disconnected Motion:/act: bolt-ons.
+        self.assertNotIn("Motion:", text)
+        self.assertNotIn("bl0wj0b act", text.lower())
         self.assertNotIn("oral_insertion", m["motion_kinds"])
 
     def test_extract_pose_missionary(self) -> None:

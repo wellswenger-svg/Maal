@@ -60,12 +60,12 @@ _REVEAL_PENIS = re.compile(
 # Pose id → short motion cue (kept tiny — long scaffolds dilute Wan face lock).
 POSE_SCAFFOLDS: dict[str, str] = {
     "oral": (
-        "bl0wj0b blowjob — man with one attached erect penis, she deepthroats him, "
-        "full in-and-out head bobbing for the whole clip"
+        "complete blowjob and deepthroat on one man with one attached erect penis, "
+        "continuous in-and-out head bobbing for the whole clip"
     ),
     "deepthroat": (
-        "bl0wj0b deepthroat — man with one attached erect penis, deep oral strokes "
-        "for the whole clip"
+        "deepthroat on one man with one attached erect penis, "
+        "repeated deep oral strokes for the whole clip"
     ),
     "oral_insertion": "oral insertion — erect penis tip entering her mouth",
     "reveal_penis": "reveal erect penis in frame",
@@ -80,19 +80,19 @@ POSE_SCAFFOLDS: dict[str, str] = {
 # Kept for tests / callers; NSFW scaffold no longer dumps these (CLIP dilution).
 POSE_SEQUENCES: dict[str, str] = {
     "oral": (
-        "man with one connected erect penis appears, she takes him into her mouth, "
-        "then full continuous blowjob head bobbing for the whole clip. "
+        "in the same scene a man with one connected erect penis is with her, "
+        "she takes him into her mouth, then full continuous blowjob for the whole clip. "
     ),
     "deepthroat": (
-        "man with one connected erect penis appears, deepthroat begins, "
-        "then repeated deep oral strokes for the whole clip. "
+        "in the same scene a man with one connected erect penis is with her, "
+        "deepthroat begins, then repeated deep oral strokes for the whole clip. "
     ),
     "oral_insertion": "erect tip approaches lips, then enters mouth. ",
-    "reveal_penis": "man appears, then erect penis is revealed. ",
+    "reveal_penis": "man is with her, then erect penis is revealed. ",
     "missionary": "missionary position, then penetration, then continuous thrusting. ",
     "cowgirl": "cowgirl mount, then penetration, then continuous riding. ",
     "doggy": "doggy position, then penetration, then continuous thrusting. ",
-    "handjob": "man appears, then hand grips shaft, then continuous stroking. ",
+    "handjob": "man is with her, then hand grips shaft, then continuous stroking. ",
     "cumshot": "build to climax, then visible cumshot. ",
     "penetration": "penetration begins, then continuous thrusting. ",
 }
@@ -286,45 +286,51 @@ def scaffold_i2v_prompt(
             edit,
         )
         edit = re.sub(r"\s{2,}", " ", edit).strip(" .")
-        # Prefer a complete appear → take-in → stroke arc (mid-only reads incomplete).
-        if not re.search(
-            r"man appears|a man (appears|comes|enters)|already (mid |in )?(continuous )?blowjob|"
-            r"full (continuous )?blowjob sequence|complete (full )?blowjob",
-            edit,
-            re.I,
-        ):
-            edit = (
-                f"{edit}. Full blowjob sequence: a man appears with exactly one erect "
-                "penis attached to his torso and hips, she takes that connected penis "
-                "into her mouth, then multiple deep in-and-out strokes with visible "
-                "full-shaft travel for the rest of the clip"
+        # Short / incomplete oral text → one whole self-contained scene prompt
+        # (I2V only sees start image + this string — no disconnected fragments).
+        _oral_whole = (
+            "Photorealistic video of the exact woman in the start image giving a "
+            "complete blowjob and deepthroat to one man in this same scene: a man "
+            "with visible torso and hips is with her, exactly one erect penis "
+            "attached to his body (never floating or detached), she takes that "
+            "connected penis fully into her mouth and deepthroats him, then keeps "
+            "giving a full continuous blowjob for the entire clip — lips sealed on "
+            "the shaft, rhythmic head bobbing, repeated deep in-and-out strokes with "
+            "visible full-shaft travel again and again, not tip-only and not frozen. "
+            "Keep her exact same face, hair, expression, clothes, and background; "
+            "same camera angle and framing; no jumpcut, no kneeling teleport, no "
+            "pose swap; sharp face every frame; one continuous shot"
+        )
+        _has_partner = bool(
+            re.search(
+                r"\b(man|partner|him|his)\b.*\b(penis|cock|dick)\b|"
+                r"\b(penis|cock|dick)\b.*\b(man|partner|attached|connected|torso)\b|"
+                r"attached to (his |the )?body|torso and hips",
+                edit,
+                re.I | re.S,
             )
-        if not re.search(
-            r"only one penis|exactly one (erect )?penis|single penis|one connected penis|"
-            r"attached to (his |the )?torso",
-            edit,
-            re.I,
-        ):
-            edit = (
-                f"{edit}. Exactly one penis attached to one man (torso+hips visible); "
-                "never a second floating penis beside her mouth or hand"
+        )
+        _has_act = bool(
+            re.search(
+                r"deepthroat|continuous blowjob|full(?:y)? (?:into|in) her mouth|"
+                r"in-and-out|full[- ]shaft|head bob",
+                edit,
+                re.I,
             )
-        if not re.search(
-            r"fully into her mouth|takes? (that |his |the )?(connected )?penis into|"
-            r"continuous blowjob|penis fully in|full-shaft|full shaft|multiple deep",
-            edit,
-            re.I,
-        ):
+        )
+        if not (_has_partner and _has_act):
+            # Keep LoRA triggers at the front; replace the thin act text with one whole scene.
+            leads = []
+            if re.search(r"\bbl0wj0b\b", edit, re.I):
+                leads.append("bl0wj0b")
+            if re.search(r"\bPENISLORA\b", edit, re.I):
+                leads.append("PENISLORA")
+            lead = (", ".join(leads) + ". ") if leads else ""
+            edit = f"{lead}{_oral_whole}"
+        elif not re.search(r"no jumpcut|no teleport|same framing|same (camera )?angle", edit, re.I):
             edit = (
-                f"{edit}. She takes the connected penis into her mouth, lips seal on "
-                "the shaft, then multiple deep in-and-out head-bob strokes with visible "
-                "full-shaft travel — not tip licking only, not a frozen mid-pose"
-            )
-        if not re.search(r"no jumpcut|no teleport|same framing|same angle", edit, re.I):
-            edit = (
-                f"{edit}. Same angle and framing as the start; she stays "
-                "in the same standing/portrait pose while performing oral — no jumpcut, "
-                "no kneeling teleport, no pose swap"
+                f"{edit}. Same camera angle and framing as the start image; "
+                "no jumpcut, no kneeling teleport, no pose swap"
             )
     if nsfw and "cumshot" in kinds_l:
         # F4C3SPL4SH (K3NK) trained word — required for reliable facial finish.
@@ -340,6 +346,20 @@ def scaffold_i2v_prompt(
     edit = edit.rstrip(". ")
 
     if nsfw:
+        oralish = "oral" in kinds_l or "deepthroat" in kinds_l
+        if oralish:
+            # Whole oral prompt already describes partner + act + locks.
+            # Do not bolt on disconnected Motion:/act: fragments.
+            identity = (
+                "Exact same woman as the start image — identical face geometry "
+                "(eyes, nose, lips, jaw, skin), identical hair; zero face change, "
+                "zero beautify, zero morph; natural start expression (no ahegao, "
+                "no eye-roll); face razor-sharp every frame. "
+            )
+            if raw_prompt:
+                return f"{identity}{edit}.".strip()
+            return f"{identity}User direction: {edit}.".strip()
+
         identity = (
             "CRITICAL: exact same woman as the start frame — identical face geometry "
             "(eyes, nose, lips, jaw, skin), identical hair; zero face change, zero "
@@ -348,16 +368,14 @@ def scaffold_i2v_prompt(
             "Same clothes colors and background. "
         )
         anatomy = (
-            "bl0wj0b act: exactly one erect penis attached to one man's torso and hips — "
-            "never floating; she deepthroats that penis with continuous in-and-out "
-            "blowjob strokes for the full clip. "
+            "Exactly one erect penis attached to one man's torso and hips — "
+            "never floating; continuous sexual action for the full clip. "
         )
         consistency = (
             "ONE continuous shot only — same angle, same framing, no cuts, no jumpcut, "
             "no teleport pose change; stable temporal continuity; "
             "face stays identical and razor-sharp every frame, no soft mush, no beautify."
         )
-        # Do not re-dump long sequences — user prompt + LoRA triggers carry the act.
         if raw_prompt:
             return (
                 f"{identity}{edit}. "
