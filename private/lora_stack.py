@@ -13,10 +13,9 @@ STAGE_STRENGTH_CAP = 4.5
 NSFW_STAGE_STRENGTH_CAP = 4.8
 LIGHTX2V_STEPS = 8
 
-# Debug toggle: oral-only runs skip DR34ML4Y + PENISLORA and use Blink Blowjob
-# solo, to isolate whether stacking (vs. the base LoRA) is the distortion source.
-# Flip back to False once the test batch is reviewed.
-ORAL_ISOLATION_TEST = True
+# Oral isolation test used JFJ-only (no DR34/PENISLORA). Off for product Oral —
+# full BJ with a man needs partner + penis LoRAs, not a solo motion LoRA.
+ORAL_ISOLATION_TEST = False
 
 # Shared Comfy + install-local probe paths (same spirit as edit_runner).
 _SHARED_LORAS = Path(r"E:\Comfy-Desktop\ComfyUI-Shared\models\loras")

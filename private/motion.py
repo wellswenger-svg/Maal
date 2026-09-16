@@ -60,12 +60,12 @@ _REVEAL_PENIS = re.compile(
 # Pose id → short motion cue (kept tiny — long scaffolds dilute Wan face lock).
 POSE_SCAFFOLDS: dict[str, str] = {
     "oral": (
-        "full blowjob sequence — a man appears with one attached erect penis, "
-        "she takes it into her mouth, then multiple deep in-and-out strokes"
+        "bl0wj0b blowjob — man with one attached erect penis, she deepthroats him, "
+        "full in-and-out head bobbing for the whole clip"
     ),
     "deepthroat": (
-        "full deep oral sequence — a man appears with one attached erect penis, "
-        "deep entry, then repeated deep thrusting strokes"
+        "bl0wj0b deepthroat — man with one attached erect penis, deep oral strokes "
+        "for the whole clip"
     ),
     "oral_insertion": "oral insertion — erect penis tip entering her mouth",
     "reveal_penis": "reveal erect penis in frame",
@@ -80,12 +80,12 @@ POSE_SCAFFOLDS: dict[str, str] = {
 # Kept for tests / callers; NSFW scaffold no longer dumps these (CLIP dilution).
 POSE_SEQUENCES: dict[str, str] = {
     "oral": (
-        "a man appears with one connected erect penis, she takes it into her mouth, "
-        "then multiple complete deep in-and-out bobbing strokes for the full clip. "
+        "man with one connected erect penis appears, she takes him into her mouth, "
+        "then full continuous blowjob head bobbing for the whole clip. "
     ),
     "deepthroat": (
-        "a man appears with one connected erect penis, deep oral begins, "
-        "then repeated deep thrusting strokes for the full clip. "
+        "man with one connected erect penis appears, deepthroat begins, "
+        "then repeated deep oral strokes for the whole clip. "
     ),
     "oral_insertion": "erect tip approaches lips, then enters mouth. ",
     "reveal_penis": "man appears, then erect penis is revealed. ",
@@ -348,9 +348,9 @@ def scaffold_i2v_prompt(
             "Same clothes colors and background. "
         )
         anatomy = (
-            "Exactly one erect penis attached to one man's torso and hips — never floating; "
-            "complete blowjob arc: man appears, she takes that connected penis into her mouth, "
-            "then multiple deep in-and-out strokes for the full clip. "
+            "bl0wj0b act: exactly one erect penis attached to one man's torso and hips — "
+            "never floating; she deepthroats that penis with continuous in-and-out "
+            "blowjob strokes for the full clip. "
         )
         consistency = (
             "ONE continuous shot only — same angle, same framing, no cuts, no jumpcut, "
