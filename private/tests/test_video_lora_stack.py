@@ -104,14 +104,24 @@ class LoraStackResolveTests(unittest.TestCase):
                     include_optional=True,
                     available_names=available,
                     trust_remote=False,
+                    nsfw=False,
+                )
+                nsfw_stack = ls.resolve_video_lora_stack(
+                    include_optional=True,
+                    available_names=available,
+                    trust_remote=False,
+                    nsfw=True,
+                    motion_kinds=["nsfw_action", "penetration", "missionary"],
                 )
 
             self.assertTrue(stack.lightx2v_active)
             # Quality path keeps full steps; distill override is draft-only.
             self.assertIsNone(stack.steps_override)
             self.assertIn("lightx2v_unc_high", stack.applied_ids)
-            self.assertIn("penis_lora_high", stack.applied_ids)
-            self.assertIn("male_gen_high", stack.missing_ids)
+            # SFW must not attach anatomy stacks.
+            self.assertNotIn("penis_lora_high", stack.applied_ids)
+            self.assertIn("penis_lora_high", nsfw_stack.applied_ids)
+            self.assertIn("male_gen_high", nsfw_stack.missing_ids)
             high_files = [f for f, _ in stack.high]
             self.assertIn("Wan2.2_LightX2V_high_n54vv.safetensors", high_files)
             self.assertLessEqual(sum(s for _, s in stack.high), ls.STAGE_STRENGTH_CAP + 1e-6)
@@ -328,6 +338,54 @@ class LoraStackResolveTests(unittest.TestCase):
         )
         self.assertTrue(any("miscellaneous/" in f for f in high_files))
         self.assertIn("reveal_penis_high", rp.applied_ids)
+
+    def test_windows_backslash_catalog_preserved(self) -> None:
+        """Comfy Desktop lists miscellaneous\\… — must queue that exact string."""
+        available = {
+            r"miscellaneous\Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
+            r"miscellaneous\Wan2.2_I2V_Oral_Insertion_LOW.safetensors",
+            "PENISLORA_22_i2v_HIGH_e320.safetensors",
+        }
+        with self._patch_lora_dirs([]):
+            oi = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=True,
+                motion_kinds=["nsfw_action", "oral", "oral_insertion"],
+            )
+        self.assertIn("oral_insertion_high", oi.applied_ids)
+        high_files = [f for f, _ in oi.high]
+        self.assertTrue(
+            any(
+                f == r"miscellaneous\Wan2.2_I2V_Oral_Insertion_HIGH.safetensors"
+                for f in high_files
+            )
+        )
+        self.assertFalse(any("miscellaneous/" in f for f, _ in oi.high))
+
+    def test_sfw_skips_anatomy_and_misc_loras(self) -> None:
+        """Clothed jiggle must not attach oral_insertion / penis stacks."""
+        available = {
+            r"miscellaneous\Wan2.2_I2V_Oral_Insertion_HIGH.safetensors",
+            r"miscellaneous\Wan2.2_I2V_Reveal_Penis_HIGH.safetensors",
+            "PENISLORA_22_i2v_HIGH_e320.safetensors",
+            "Wan2.2_LightX2V_high_n54vv.safetensors",
+            "Wan2.2_LightX2V_low_n54vv.safetensors",
+        }
+        with self._patch_lora_dirs([]):
+            stack = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=False,
+                motion_kinds=["subtle_life"],
+            )
+        self.assertNotIn("oral_insertion_high", stack.applied_ids)
+        self.assertNotIn("reveal_penis_high", stack.applied_ids)
+        self.assertNotIn("penis_lora_high", stack.applied_ids)
+        self.assertTrue(
+            all(i.startswith("lightx2v") for i in stack.applied_ids),
+            stack.applied_ids,
+        )
 
     def test_skips_corrupt_local_safetensors(self) -> None:
         """Truncated enhancer must not be queued (Sex crash: invalid size 95251)."""

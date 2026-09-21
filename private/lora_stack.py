@@ -346,22 +346,32 @@ def _lora_dirs(settings: Settings | None = None) -> list[Path]:
 
 
 def _name_in_available(name: str, available: set[str]) -> Optional[str]:
-    """Return the Comfy-facing path (may include miscellaneous/)."""
+    """Return the exact Comfy catalog string (preserve Windows \\ subfolder paths).
+
+    Comfy Desktop on Windows lists ``miscellaneous\\foo.safetensors``. Queuing the
+    posix form ``miscellaneous/foo.safetensors`` fails validation even when the
+    file exists — always return the catalog entry verbatim.
+    """
     name_norm = name.replace("\\", "/")
+    if name in available:
+        return name
     if name_norm in available:
         return name_norm
-    # Also accept Windows-style catalog entries.
-    if name_norm.replace("/", "\\") in available:
-        return name_norm
+    back = name_norm.replace("/", "\\")
+    if back in available:
+        return back
     target = Path(name_norm).name.lower()
     preferred: Optional[str] = None
+    preferred_norm = ""
     for item in available:
         item_n = item.replace("\\", "/")
         if Path(item_n).name.lower() != target:
             continue
         # Prefer subfolder path so LoraLoader can find moved misc weights.
-        if preferred is None or ("/" in item_n and "/" not in preferred):
-            preferred = item_n
+        # Keep Comfy's exact string (slash style) from the catalog.
+        if preferred is None or ("/" in item_n and "/" not in preferred_norm):
+            preferred = item
+            preferred_norm = item_n
     return preferred
 
 
@@ -496,7 +506,10 @@ class ResolvedLoraStack:
 def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     """Drop LoRAs that fight the requested act (keeps strength budget focused)."""
     if not nsfw:
-        return True
+        # Clothed / SFW motion (jiggle, walk, etc.): never attach anatomy or pose
+        # stacks — they used to always-on and then fail Comfy validation when
+        # miscellaneous\\ paths were rewritten with the wrong slash.
+        return spec_id.startswith("lightx2v")
 
     oral = "oral" in kinds or "deepthroat" in kinds
     penetration = "penetration" in kinds or any(
