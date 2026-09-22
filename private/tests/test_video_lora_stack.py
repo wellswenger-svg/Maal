@@ -409,6 +409,28 @@ class LoraStackResolveTests(unittest.TestCase):
         high_files = [f for f, _ in stack.high]
         self.assertIn("Wan2.2_I2V_SlopBounce_HIGH.safetensors", high_files)
 
+    def test_twerk_loads_slow_twerk_stack(self) -> None:
+        """Twerk uses Slow Twerk HIGH/LOW like Jingle uses Slop Bounce."""
+        available = {
+            "Wan2.2_I2V_SlowTwerk_HIGH.safetensors",
+            "Wan2.2_I2V_SlowTwerk_LOW.safetensors",
+            "Wan2.2_I2V_SlopBounce_HIGH.safetensors",
+            "Wan2.2_LightX2V_high_n54vv.safetensors",
+        }
+        with self._patch_lora_dirs([]):
+            stack = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=False,
+                motion_kinds=["twerk"],
+            )
+        self.assertIn("twerk_high", stack.applied_ids)
+        self.assertIn("twerk_low", stack.applied_ids)
+        self.assertNotIn("jiggle_high", stack.applied_ids)
+        self.assertNotIn("lightx2v_unc_high", stack.applied_ids)
+        high_files = [f for f, _ in stack.high]
+        self.assertIn("Wan2.2_I2V_SlowTwerk_HIGH.safetensors", high_files)
+
     def test_skips_corrupt_local_safetensors(self) -> None:
         """Truncated enhancer must not be queued (Sex crash: invalid size 95251)."""
         with tempfile.TemporaryDirectory() as tmp:

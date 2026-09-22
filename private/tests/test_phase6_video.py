@@ -131,6 +131,14 @@ class Phase6MotionTests(unittest.TestCase):
         text = scaffold_i2v_prompt(m and "jingle her boobs", m)
         self.assertRegex(text.lower(), r"bounce|jiggle|sway")
 
+    def test_twerk_kind_from_twerk_text(self) -> None:
+        m = extract_motion_hints("Make her twerk hard. Ass shaking booty bounce.")
+        self.assertIn("twerk", m["motion_kinds"])
+        self.assertNotIn("jiggle", m["motion_kinds"])
+        self.assertFalse(m["nsfw"])
+        text = scaffold_i2v_prompt("twerk", m)
+        self.assertRegex(text.lower(), r"twerk|ass")
+
     def test_profile_table(self) -> None:
         d = profile_video_params("draft")
         q = profile_video_params("quality")

@@ -88,31 +88,33 @@ async def run_i2v_v1(
     oralish = nsfw and ("oral" in kinds_l or "deepthroat" in kinds_l)
     # Facial cumshot also rewrites the start face hard — same identity knobs as oral.
     facelock = oralish or (nsfw and "cumshot" in kinds_l)
-    # Clothed jiggle gets the same quality budget as Oral (LoRA-driven motion).
+    # Clothed jiggle/twerk get the same quality budget as Oral (LoRA-driven motion).
     jiggleish = "jiggle" in kinds_l
-    quality_lock = facelock or jiggleish
+    twerkish = "twerk" in kinds_l
+    bounceish = jiggleish or twerkish
+    quality_lock = facelock or bounceish
     if oralish:
         # Match gold oral blur-fix (hnf 0.22): enough partner invent, less tip-only stall.
         high_noise_fraction = 0.22
     elif facelock:
         # Cumshot face-lock: keep lower invent so finish LoRA doesn't wipe identity.
         high_noise_fraction = 0.18
-    elif jiggleish:
-        # Bounce LoRA owns motion — mild invent so face/clothes stay locked.
+    elif bounceish:
+        # Bounce/twerk LoRA owns motion — mild invent so face/clothes stay locked.
         high_noise_fraction = 0.28
     elif nsfw:
         high_noise_fraction = 0.34
     else:
         high_noise_fraction = 0.4
-    if nsfw or jiggleish:
+    if nsfw or bounceish:
         # Mild CFG — high CFG fights the start image and softens the face.
         if facelock:
             cfg = min(max(cfg, 3.4), 3.55)
-        elif jiggleish:
+        elif bounceish:
             cfg = min(max(cfg, 3.45), 3.6)
         else:
             cfg = min(max(cfg, 3.5), 3.7)
-        # More steps + denser frames — Oral gold path; jiggle mirrors it.
+        # More steps + denser frames — Oral gold path; jiggle/twerk mirrors it.
         steps = max(steps, 52 if quality_lock else 42)
         if quality_lock:
             fps = max(fps, 16)

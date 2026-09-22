@@ -193,6 +193,28 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
         ),
         optional=True,
     ),
+    # PornMaster Slow Twerk (Civitai 2055033) — Wan 2.2 I2V HIGH/LOW dual-stage
+    # ass shake / twerk. Same role as JFJ / Slop Bounce for motion quality.
+    LoraSpec(
+        "twerk_high",
+        "high",
+        1.0,
+        (
+            "Wan2.2_I2V_SlowTwerk_HIGH.safetensors",
+            "Pornmaster_wan 2.2_14b_I2V_ Slow Twerk_v1_high_noise.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "twerk_low",
+        "low",
+        1.0,
+        (
+            "Wan2.2_I2V_SlowTwerk_LOW.safetensors",
+            "Pornmaster_wan 2.2_14b_I2V_ Slow Twerk_v1_low_noise.safetensors",
+        ),
+        optional=True,
+    ),
     LoraSpec(
         "missionary_high",
         "high",
@@ -346,6 +368,7 @@ MISC_SPECS: tuple[LoraSpec, ...] = (
 # Pose LoRA id prefix → required motion kind (only load when that pose is requested).
 _POSE_LORA_KIND: dict[str, str] = {
     "jiggle": "jiggle",
+    "twerk": "twerk",
     "missionary": "missionary",
     "cowgirl": "cowgirl",
     "doggy": "doggy",
@@ -529,19 +552,24 @@ class ResolvedLoraStack:
 def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     """Drop LoRAs that fight the requested act (keeps strength budget focused)."""
     jiggle = "jiggle" in kinds
-    # Clothed jiggle: only the dedicated bounce stack (Oral-quality motion driver).
+    twerk = "twerk" in kinds
+    motion_solo = jiggle or twerk
+    # Clothed bounce/twerk: only the dedicated motion stack (Oral-quality driver).
     if not nsfw:
         if spec_id.startswith("jiggle"):
-            return jiggle
-        # LightX2V dilutes bounce physics — skip when jiggle is the job.
-        if jiggle:
+            return jiggle and not twerk
+        if spec_id.startswith("twerk"):
+            return twerk
+        if motion_solo:
             return False
         return spec_id.startswith("lightx2v")
 
-    # NSFW + jiggle still prefers bounce LoRA over anatomy noise.
-    if jiggle and spec_id.startswith("jiggle"):
+    # NSFW + jiggle/twerk still prefers the motion LoRA over anatomy noise.
+    if jiggle and not twerk and spec_id.startswith("jiggle"):
         return True
-    if jiggle and (
+    if twerk and spec_id.startswith("twerk"):
+        return True
+    if motion_solo and (
         spec_id.startswith("deepthroat")
         or spec_id.startswith("penis_lora")
         or spec_id.startswith("male_gen")
@@ -555,6 +583,8 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
         or spec_id.startswith("oral_insertion")
         or spec_id.startswith("reveal_penis")
         or spec_id.startswith("lightx2v")
+        or (twerk and spec_id.startswith("jiggle"))
+        or (jiggle and not twerk and spec_id.startswith("twerk"))
     ):
         return False
 

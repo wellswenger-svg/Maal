@@ -223,6 +223,21 @@ def register(add) -> None:
         status="installed",
         download_source="https://civitai.com/models/1944129?modelVersionId=2209344",
     )
+    # PornMaster Slow Twerk (Civitai 2055033) — clothed ass shake / twerk motion driver.
+    add(
+        "lora.video_twerk_high",
+        filename="Wan2.2_I2V_SlowTwerk_HIGH.safetensors",
+        role="lora",
+        status="installed",
+        download_source="https://civitai.com/models/2055033?modelVersionId=2325622",
+    )
+    add(
+        "lora.video_twerk_low",
+        filename="Wan2.2_I2V_SlowTwerk_LOW.safetensors",
+        role="lora",
+        status="installed",
+        download_source="https://civitai.com/models/2055033?modelVersionId=2325629",
+    )
     # Misc / staged-for-removal (models/loras/miscellaneous/) — still wired for remote text use.
     add(
         "lora.video_oral_insertion_high",

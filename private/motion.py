@@ -63,6 +63,13 @@ _JIGGLE = re.compile(
     r"(boobs?|breasts?|tits?)\s+(shake|shaking|jiggle|jiggling|bounce|bouncing))\b",
     re.I,
 )
+_TWERK = re.compile(
+    r"\b(twerk|twerking|twerked|"
+    r"ass\s*(shake|shaking|jiggle|jiggling|bounce|bouncing)|"
+    r"booty\s*(shake|shaking|jiggle|jiggling|bounce|bouncing)|"
+    r"butt\s*(shake|shaking|jiggle|jiggling|bounce|bouncing))\b",
+    re.I,
+)
 
 # Pose id → short motion cue (kept tiny — long scaffolds dilute Wan face lock).
 POSE_SCAFFOLDS: dict[str, str] = {
@@ -79,6 +86,10 @@ POSE_SCAFFOLDS: dict[str, str] = {
     "jiggle": (
         "her breasts bounce, shake, jiggle and sway continuously — "
         "clear soft-tissue bounce under the clothes, not frozen"
+    ),
+    "twerk": (
+        "twerking and ass shaking — twerks causing her ass to jiggle and shake "
+        "continuously, clear booty bounce, not frozen"
     ),
     "missionary": "missionary thrusting with erect penis in vagina",
     "cowgirl": "cowgirl riding with erect penis in vagina",
@@ -104,6 +115,10 @@ POSE_SEQUENCES: dict[str, str] = {
         "she starts moving so her breasts bounce, then continuous jiggle and sway "
         "for the whole clip. "
     ),
+    "twerk": (
+        "she starts twerking, then continuous ass shaking and booty jiggle "
+        "for the whole clip. "
+    ),
     "missionary": "missionary position, then penetration, then continuous thrusting. ",
     "cowgirl": "cowgirl mount, then penetration, then continuous riding. ",
     "doggy": "doggy position, then penetration, then continuous thrusting. ",
@@ -117,6 +132,7 @@ _SEQUENCE_PRIORITY = (
     "deepthroat",
     "oral_insertion",
     "reveal_penis",
+    "twerk",
     "jiggle",
     "missionary",
     "cowgirl",
@@ -185,6 +201,14 @@ def extract_motion_hints(text: str) -> dict[str, Any]:
     if _JIGGLE.search(t):
         kinds.append("jiggle")
         amplitude = "high"
+    # Ass shake / twerk — prefer over bare "bounce" breast jiggle when both match.
+    if _TWERK.search(t):
+        kinds.append("twerk")
+        amplitude = "high"
+        if "jiggle" in kinds and not re.search(
+            r"\b(boobs?|breasts?|tits?|cleavage)\b", t, re.I
+        ):
+            kinds = [k for k in kinds if k != "jiggle"]
     if _PAN.search(t):
         kinds.append("pan")
     if _ZOOM.search(t):
@@ -280,7 +304,7 @@ def scaffold_i2v_prompt(
         edit = f"{edit}. PENISLORA"
     kinds_l = [str(k) for k in kinds]
     # Jiggle / jingle: Oral-quality whole-scene prompt so I2V gets a clear bounce driver.
-    if "jiggle" in kinds_l:
+    if "jiggle" in kinds_l and "twerk" not in kinds_l:
         _jiggle_cue = (
             r"bounce|bouncing|jiggle|jiggling|jingle|jingling|wobble|sway|"
             r"shake|shaking"
@@ -299,6 +323,29 @@ def scaffold_i2v_prompt(
             edit = (
                 f"{edit}. Her breasts bounce, shake, jiggle and sway continuously — "
                 "clear soft-tissue bounce under the clothes for the whole clip"
+            )
+        if not re.search(r"no jumpcut|same framing|same (camera )?angle", edit, re.I):
+            edit = (
+                f"{edit}. Same camera angle and framing as the start image; "
+                "no jumpcut, no pose swap"
+            )
+    # Twerk: same quality pattern with Slow Twerk trigger language.
+    if "twerk" in kinds_l:
+        _twerk_cue = r"twerk|ass\s*shak|booty|butt\s*(shake|jiggle|bounce)"
+        if not re.search(_twerk_cue, edit, re.I) or len(edit) < 80:
+            edit = (
+                "Photorealistic video of the exact woman in the start image: twerking and "
+                "ass shaking — twerks causing her ass to jiggle and shake continuously for "
+                "the whole clip, clear heavy booty bounce under the same clothes, natural "
+                "physics, not frozen. Keep her exact same face, hair, expression, clothes, "
+                "body proportions, and background; same camera angle and framing; no "
+                "jumpcut, no pose swap, no outfit change; sharp face every frame; "
+                "one continuous shot"
+            )
+        elif not re.search(r"twerking and ass shaking|ass to jiggle and shake", edit, re.I):
+            edit = (
+                f"{edit}. Twerking and ass shaking — twerks causing her ass to jiggle "
+                "and shake continuously for the whole clip"
             )
         if not re.search(r"no jumpcut|same framing|same (camera )?angle", edit, re.I):
             edit = (
