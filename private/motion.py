@@ -56,6 +56,13 @@ _REVEAL_PENIS = re.compile(
     r"pull\s+out\s+(his\s+)?penis|unzip|flash\s+(his\s+)?penis)\b",
     re.I,
 )
+_JIGGLE = re.compile(
+    r"\b(jiggle|jiggling|jingle|jingling|bounce|bouncing|wobble|wobbling|"
+    r"boob\s*bounce|breast\s*bounce|breast\s*jiggle|titty\s*bounce|"
+    r"shake\s+(her\s+)?(boobs?|breasts?|tits?)|"
+    r"(boobs?|breasts?|tits?)\s+(shake|shaking|jiggle|jiggling|bounce|bouncing))\b",
+    re.I,
+)
 
 # Pose id → short motion cue (kept tiny — long scaffolds dilute Wan face lock).
 POSE_SCAFFOLDS: dict[str, str] = {
@@ -69,6 +76,10 @@ POSE_SCAFFOLDS: dict[str, str] = {
     ),
     "oral_insertion": "oral insertion — erect penis tip entering her mouth",
     "reveal_penis": "reveal erect penis in frame",
+    "jiggle": (
+        "her breasts bounce, shake, jiggle and sway continuously — "
+        "clear soft-tissue bounce under the clothes, not frozen"
+    ),
     "missionary": "missionary thrusting with erect penis in vagina",
     "cowgirl": "cowgirl riding with erect penis in vagina",
     "doggy": "doggy thrusting with erect penis entering from behind",
@@ -89,6 +100,10 @@ POSE_SEQUENCES: dict[str, str] = {
     ),
     "oral_insertion": "erect tip approaches lips, then enters mouth. ",
     "reveal_penis": "man is with her, then erect penis is revealed. ",
+    "jiggle": (
+        "she starts moving so her breasts bounce, then continuous jiggle and sway "
+        "for the whole clip. "
+    ),
     "missionary": "missionary position, then penetration, then continuous thrusting. ",
     "cowgirl": "cowgirl mount, then penetration, then continuous riding. ",
     "doggy": "doggy position, then penetration, then continuous thrusting. ",
@@ -102,6 +117,7 @@ _SEQUENCE_PRIORITY = (
     "deepthroat",
     "oral_insertion",
     "reveal_penis",
+    "jiggle",
     "missionary",
     "cowgirl",
     "doggy",
@@ -165,6 +181,10 @@ def extract_motion_hints(text: str) -> dict[str, Any]:
         # Oral: keep motion readable (not frozen tip-lick) but not jumpcut-fast.
         if "oral" in kinds or "deepthroat" in kinds:
             amplitude = "medium"
+    # Clothed / freeform breast bounce — works without NSFW keywords.
+    if _JIGGLE.search(t):
+        kinds.append("jiggle")
+        amplitude = "high"
     if _PAN.search(t):
         kinds.append("pan")
     if _ZOOM.search(t):
@@ -259,6 +279,32 @@ def scaffold_i2v_prompt(
         # Trigger token for PENISLORA_22 when that LoRA is loaded.
         edit = f"{edit}. PENISLORA"
     kinds_l = [str(k) for k in kinds]
+    # Jiggle / jingle: Oral-quality whole-scene prompt so I2V gets a clear bounce driver.
+    if "jiggle" in kinds_l:
+        _jiggle_cue = (
+            r"bounce|bouncing|jiggle|jiggling|jingle|jingling|wobble|sway|"
+            r"shake|shaking"
+        )
+        if not re.search(_jiggle_cue, edit, re.I) or len(edit) < 80:
+            edit = (
+                "Photorealistic video of the exact woman in the start image: her breasts "
+                "bounce, shake, jiggle and sway continuously for the whole clip — clear "
+                "soft heavy bounce under the same clothes, natural physics, not frozen and "
+                "not a tiny micro-wiggle. Keep her exact same face, hair, expression, "
+                "clothes, body proportions, and background; same camera angle and framing; "
+                "no jumpcut, no pose swap, no outfit change; sharp face every frame; "
+                "one continuous shot"
+            )
+        elif not re.search(r"bounce, shake, jiggle|jiggle and sway", edit, re.I):
+            edit = (
+                f"{edit}. Her breasts bounce, shake, jiggle and sway continuously — "
+                "clear soft-tissue bounce under the clothes for the whole clip"
+            )
+        if not re.search(r"no jumpcut|same framing|same (camera )?angle", edit, re.I):
+            edit = (
+                f"{edit}. Same camera angle and framing as the start image; "
+                "no jumpcut, no pose swap"
+            )
     # DR34ML4Y AIO trained words (V2) — one pose trigger only, front of prompt.
     _dr34 = {
         "missionary": "m15510n4ry",

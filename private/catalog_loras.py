@@ -208,6 +208,21 @@ def register(add) -> None:
         status="missing",
         download_source="https://huggingface.co/Melonhead123/WAN2.2-I2V-Handjob-One-Two-handed",
     )
+    # Slop Bounce (Civitai 1944129) — clothed breast jiggle / jingle motion driver.
+    add(
+        "lora.video_jiggle_high",
+        filename="Wan2.2_I2V_SlopBounce_HIGH.safetensors",
+        role="lora",
+        status="installed",
+        download_source="https://civitai.com/models/1944129?modelVersionId=2209354",
+    )
+    add(
+        "lora.video_jiggle_low",
+        filename="Wan2.2_I2V_SlopBounce_LOW.safetensors",
+        role="lora",
+        status="installed",
+        download_source="https://civitai.com/models/1944129?modelVersionId=2209344",
+    )
     # Misc / staged-for-removal (models/loras/miscellaneous/) — still wired for remote text use.
     add(
         "lora.video_oral_insertion_high",

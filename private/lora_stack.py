@@ -171,6 +171,28 @@ CORE_SPECS: tuple[LoraSpec, ...] = (
 
 # Pose LoRAs — optional; loaded when freeform text / Sex button sets that motion kind.
 OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
+    # Slop Bounce (Civitai 1944129) — Wan 2.2 I2V HIGH/LOW dual-stage breast
+    # jiggle/bounce. Same role as JFJ for Oral: the dedicated motion driver.
+    LoraSpec(
+        "jiggle_high",
+        "high",
+        1.0,
+        (
+            "Wan2.2_I2V_SlopBounce_HIGH.safetensors",
+            "bounce_test_HighNoise-000005.safetensors",
+        ),
+        optional=True,
+    ),
+    LoraSpec(
+        "jiggle_low",
+        "low",
+        1.0,
+        (
+            "Wan2.2_I2V_SlopBounce_LOW.safetensors",
+            "bounce_test_LowNoise-000005.safetensors",
+        ),
+        optional=True,
+    ),
     LoraSpec(
         "missionary_high",
         "high",
@@ -323,6 +345,7 @@ MISC_SPECS: tuple[LoraSpec, ...] = (
 
 # Pose LoRA id prefix → required motion kind (only load when that pose is requested).
 _POSE_LORA_KIND: dict[str, str] = {
+    "jiggle": "jiggle",
     "missionary": "missionary",
     "cowgirl": "cowgirl",
     "doggy": "doggy",
@@ -505,11 +528,35 @@ class ResolvedLoraStack:
 
 def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     """Drop LoRAs that fight the requested act (keeps strength budget focused)."""
+    jiggle = "jiggle" in kinds
+    # Clothed jiggle: only the dedicated bounce stack (Oral-quality motion driver).
     if not nsfw:
-        # Clothed / SFW motion (jiggle, walk, etc.): never attach anatomy or pose
-        # stacks — they used to always-on and then fail Comfy validation when
-        # miscellaneous\\ paths were rewritten with the wrong slash.
+        if spec_id.startswith("jiggle"):
+            return jiggle
+        # LightX2V dilutes bounce physics — skip when jiggle is the job.
+        if jiggle:
+            return False
         return spec_id.startswith("lightx2v")
+
+    # NSFW + jiggle still prefers bounce LoRA over anatomy noise.
+    if jiggle and spec_id.startswith("jiggle"):
+        return True
+    if jiggle and (
+        spec_id.startswith("deepthroat")
+        or spec_id.startswith("penis_lora")
+        or spec_id.startswith("male_gen")
+        or spec_id.startswith("female_gen")
+        or spec_id.startswith("cumshot")
+        or spec_id.startswith("dr34ml4y")
+        or spec_id.startswith("missionary")
+        or spec_id.startswith("cowgirl")
+        or spec_id.startswith("doggy")
+        or spec_id.startswith("handjob")
+        or spec_id.startswith("oral_insertion")
+        or spec_id.startswith("reveal_penis")
+        or spec_id.startswith("lightx2v")
+    ):
+        return False
 
     oral = "oral" in kinds or "deepthroat" in kinds
     penetration = "penetration" in kinds or any(

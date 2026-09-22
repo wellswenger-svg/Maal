@@ -122,6 +122,15 @@ class Phase6MotionTests(unittest.TestCase):
         rp = extract_motion_hints("reveal penis unzip")
         self.assertIn("reveal_penis", rp["motion_kinds"])
 
+    def test_jiggle_kind_from_jingle_text(self) -> None:
+        m = extract_motion_hints(
+            "Make her jingle her boobs hard. Big boobs photorealistic jingle."
+        )
+        self.assertIn("jiggle", m["motion_kinds"])
+        self.assertFalse(m["nsfw"])
+        text = scaffold_i2v_prompt(m and "jingle her boobs", m)
+        self.assertRegex(text.lower(), r"bounce|jiggle|sway")
+
     def test_profile_table(self) -> None:
         d = profile_video_params("draft")
         q = profile_video_params("quality")

@@ -387,6 +387,28 @@ class LoraStackResolveTests(unittest.TestCase):
             stack.applied_ids,
         )
 
+    def test_jiggle_loads_slop_bounce_stack(self) -> None:
+        """Jingle/jiggle uses Slop Bounce HIGH/LOW like Oral uses JFJ."""
+        available = {
+            "Wan2.2_I2V_SlopBounce_HIGH.safetensors",
+            "Wan2.2_I2V_SlopBounce_LOW.safetensors",
+            "Wan2.2_LightX2V_high_n54vv.safetensors",
+            "PENISLORA_22_i2v_HIGH_e320.safetensors",
+        }
+        with self._patch_lora_dirs([]):
+            stack = ls.resolve_video_lora_stack(
+                include_optional=True,
+                available_names=available,
+                nsfw=False,
+                motion_kinds=["jiggle"],
+            )
+        self.assertIn("jiggle_high", stack.applied_ids)
+        self.assertIn("jiggle_low", stack.applied_ids)
+        self.assertNotIn("lightx2v_unc_high", stack.applied_ids)
+        self.assertNotIn("penis_lora_high", stack.applied_ids)
+        high_files = [f for f, _ in stack.high]
+        self.assertIn("Wan2.2_I2V_SlopBounce_HIGH.safetensors", high_files)
+
     def test_skips_corrupt_local_safetensors(self) -> None:
         """Truncated enhancer must not be queued (Sex crash: invalid size 95251)."""
         with tempfile.TemporaryDirectory() as tmp:

@@ -88,36 +88,40 @@ async def run_i2v_v1(
     oralish = nsfw and ("oral" in kinds_l or "deepthroat" in kinds_l)
     # Facial cumshot also rewrites the start face hard — same identity knobs as oral.
     facelock = oralish or (nsfw and "cumshot" in kinds_l)
+    # Clothed jiggle gets the same quality budget as Oral (LoRA-driven motion).
+    jiggleish = "jiggle" in kinds_l
+    quality_lock = facelock or jiggleish
     if oralish:
         # Match gold oral blur-fix (hnf 0.22): enough partner invent, less tip-only stall.
         high_noise_fraction = 0.22
     elif facelock:
         # Cumshot face-lock: keep lower invent so finish LoRA doesn't wipe identity.
         high_noise_fraction = 0.18
+    elif jiggleish:
+        # Bounce LoRA owns motion — mild invent so face/clothes stay locked.
+        high_noise_fraction = 0.28
     elif nsfw:
         high_noise_fraction = 0.34
     else:
         high_noise_fraction = 0.4
-    if nsfw:
+    if nsfw or jiggleish:
         # Mild CFG — high CFG fights the start image and softens the face.
-        cfg = min(max(cfg, 3.4), 3.55) if facelock else min(max(cfg, 3.5), 3.7)
-        # More steps + slower oral motion (lower fps) to reduce mid/late mouth mush.
-        # Cap oral/cumshot steps at 52 on Colab tunnel — 60+ often dies mid-run on 3–5s.
-        steps = max(steps, 52 if facelock else 42)
         if facelock:
-            # Keep 16fps for BJ frame density (12fps was tip-only).
+            cfg = min(max(cfg, 3.4), 3.55)
+        elif jiggleish:
+            cfg = min(max(cfg, 3.45), 3.6)
+        else:
+            cfg = min(max(cfg, 3.5), 3.7)
+        # More steps + denser frames — Oral gold path; jiggle mirrors it.
+        steps = max(steps, 52 if quality_lock else 42)
+        if quality_lock:
             fps = max(fps, 16)
-            # Caller controls length (3s A/B vs 5s full-sequence). Do not auto-bump.
             if video_seconds is not None:
                 length = frames_for_seconds(float(video_seconds), fps)
-            motion["amplitude"] = "medium"
-        # NSFW I2V softens badly under 720 — keep native detail for faces/acts.
-        # Oral/cumshot need even more side length; balanced was landing ~464x640 mush.
-        # Cap at 832 on 16GB — 896 + multi-LoRA stalled the sampler.
-        floor = 832 if facelock else 720
-        if pname in ("balanced", "quality", "ultra") or facelock:
+            motion["amplitude"] = "medium" if oralish or facelock else "high"
+        floor = 832 if quality_lock else 720
+        if pname in ("balanced", "quality", "ultra") or quality_lock:
             max_side = max(max_side, floor)
-        # Skip deferred RIFE annotation — interpolation softens detail if wired later.
         if plan is not None and params.get("post"):
             params = {**params, "post": [p for p in (params.get("post") or []) if "rife" not in str(p)]}
     # LightX2V is an uncensored nudge only. Draft may use distill step count;
