@@ -92,9 +92,13 @@ async def run_i2v_v1(
     jiggleish = "jiggle" in kinds_l
     twerkish = "twerk" in kinds_l
     bounceish = jiggleish or twerkish
-    quality_lock = facelock or bounceish
-    if oralish:
-        # Match gold oral blur-fix (hnf 0.22): enough partner invent, less tip-only stall.
+    sexish = nsfw and (
+        "penetration" in kinds_l
+        or any(k in kinds_l for k in ("missionary", "cowgirl", "doggy"))
+    )
+    quality_lock = facelock or bounceish or sexish
+    if oralish or sexish:
+        # Match gold oral blur-fix (hnf 0.22): enough partner invent, less face mush.
         high_noise_fraction = 0.22
     elif facelock:
         # Cumshot face-lock: keep lower invent so finish LoRA doesn't wipe identity.
@@ -108,19 +112,19 @@ async def run_i2v_v1(
         high_noise_fraction = 0.4
     if nsfw or bounceish:
         # Mild CFG — high CFG fights the start image and softens the face.
-        if facelock:
+        if facelock or sexish:
             cfg = min(max(cfg, 3.4), 3.55)
         elif bounceish:
             cfg = min(max(cfg, 3.45), 3.6)
         else:
             cfg = min(max(cfg, 3.5), 3.7)
-        # More steps + denser frames — Oral gold path; jiggle/twerk mirrors it.
+        # More steps + denser frames — Oral gold path; sex/jiggle/twerk mirrors it.
         steps = max(steps, 52 if quality_lock else 42)
         if quality_lock:
             fps = max(fps, 16)
             if video_seconds is not None:
                 length = frames_for_seconds(float(video_seconds), fps)
-            motion["amplitude"] = "medium" if oralish or facelock else "high"
+            motion["amplitude"] = "medium" if oralish or facelock or sexish else "high"
         floor = 832 if quality_lock else 720
         if pname in ("balanced", "quality", "ultra") or quality_lock:
             max_side = max(max_side, floor)

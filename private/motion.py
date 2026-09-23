@@ -425,6 +425,81 @@ def scaffold_i2v_prompt(
                 f"{edit}. Same camera angle and framing as the start image; "
                 "no jumpcut, no kneeling teleport, no pose swap"
             )
+    if nsfw and (
+        "penetration" in kinds_l
+        or any(k in kinds_l for k in ("missionary", "cowgirl", "doggy"))
+    ) and not ("oral" in kinds_l or "deepthroat" in kinds_l):
+        pose = next(
+            (k for k in ("missionary", "cowgirl", "doggy") if k in kinds_l),
+            "missionary",
+        )
+        _sex_wholes = {
+            "missionary": (
+                "Photorealistic video of the exact woman in the start image having "
+                "missionary sex with one man in this same scene: a man with visible "
+                "torso and hips is with her, exactly one erect penis attached to his "
+                "body (never floating or detached), he is on top, that connected penis "
+                "enters her vagina, then continuous in-and-out thrusting for the entire "
+                "clip — full-shaft travel again and again, not frozen and not a tiny "
+                "wiggle. Keep her exact same face, hair, expression, and background; "
+                "same camera angle and framing; no jumpcut, no pose swap; sharp face "
+                "every frame; one continuous shot"
+            ),
+            "cowgirl": (
+                "Photorealistic video of the exact woman in the start image riding "
+                "cowgirl on one man in this same scene: a man with visible torso and "
+                "hips is with her, exactly one erect penis attached to his body "
+                "(never floating or detached), she is on top, that connected penis "
+                "is inside her vagina, then continuous riding and thrusting for the "
+                "entire clip — full hip travel again and again, not frozen. Keep her "
+                "exact same face, hair, expression, and background; same camera angle "
+                "and framing; no jumpcut, no pose swap; sharp face every frame; "
+                "one continuous shot"
+            ),
+            "doggy": (
+                "Photorealistic video of the exact woman in the start image having "
+                "doggy-style sex with one man in this same scene: a man with visible "
+                "torso and hips is with her, exactly one erect penis attached to his "
+                "body (never floating or detached), he is behind her, that connected "
+                "penis enters her vagina, then continuous in-and-out thrusting for the "
+                "entire clip — full-shaft travel again and again, not frozen. Keep her "
+                "exact same face, hair, expression, and background; same camera angle "
+                "and framing; no jumpcut, no pose swap; sharp face every frame; "
+                "one continuous shot"
+            ),
+        }
+        _sex_whole = _sex_wholes[pose]
+        _has_partner = bool(
+            re.search(
+                r"\b(man|partner|him|his)\b.*\b(penis|cock|dick)\b|"
+                r"\b(penis|cock|dick)\b.*\b(man|partner|attached|connected|torso)\b|"
+                r"attached to (his |the )?body|torso and hips",
+                edit,
+                re.I | re.S,
+            )
+        )
+        _has_act = bool(
+            re.search(
+                r"continuous thrust|in-and-out|full[- ]shaft|entering her|"
+                r"penis (enters|entering)|riding",
+                edit,
+                re.I,
+            )
+        )
+        if not (_has_partner and _has_act) or len(edit) < 120:
+            leads = []
+            for trig in ("m15510n4ry", "c0wg1rl", "d0gg1e"):
+                if re.search(rf"\b{trig}\b", edit, re.I):
+                    leads.append(trig)
+            if re.search(r"\bPENISLORA\b", edit, re.I):
+                leads.append("PENISLORA")
+            lead = (", ".join(leads) + ". ") if leads else ""
+            edit = f"{lead}{_sex_whole}"
+        elif not re.search(r"no jumpcut|same framing|same (camera )?angle", edit, re.I):
+            edit = (
+                f"{edit}. Same camera angle and framing as the start image; "
+                "no jumpcut, no pose swap"
+            )
     if nsfw and "cumshot" in kinds_l:
         # F4C3SPL4SH (K3NK) trained word — required for reliable facial finish.
         if not re.search(r"\bf4c3spl4sh\b", edit, re.I):
@@ -440,8 +515,12 @@ def scaffold_i2v_prompt(
 
     if nsfw:
         oralish = "oral" in kinds_l or "deepthroat" in kinds_l
-        if oralish:
-            # Whole oral prompt already describes partner + act + locks.
+        sexish = (
+            "penetration" in kinds_l
+            or any(k in kinds_l for k in ("missionary", "cowgirl", "doggy"))
+        )
+        if oralish or sexish:
+            # Whole oral/sex prompt already describes partner + act + locks.
             # Do not bolt on disconnected Motion:/act: fragments.
             identity = (
                 "Exact same woman as the start image — identical face geometry "

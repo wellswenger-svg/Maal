@@ -121,7 +121,7 @@ class LoraStackResolveTests(unittest.TestCase):
             # SFW must not attach anatomy stacks.
             self.assertNotIn("penis_lora_high", stack.applied_ids)
             self.assertIn("penis_lora_high", nsfw_stack.applied_ids)
-            self.assertIn("male_gen_high", nsfw_stack.missing_ids)
+            self.assertNotIn("male_gen_high", nsfw_stack.applied_ids)
             high_files = [f for f, _ in stack.high]
             self.assertIn("Wan2.2_LightX2V_high_n54vv.safetensors", high_files)
             self.assertLessEqual(sum(s for _, s in stack.high), ls.STAGE_STRENGTH_CAP + 1e-6)
@@ -264,6 +264,9 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("DR34ML4Y_I2V_14B_HIGH_V2.safetensors", high_files)
         self.assertIn("female_gen_high", stack.applied_ids)
         self.assertNotIn("deepthroat_high", stack.applied_ids)
+        self.assertNotIn("male_gen_high", stack.applied_ids)
+        high_map = {f: s for f, s in stack.high}
+        self.assertAlmostEqual(high_map["Wan2.2_I2V_Missionary_HIGH.safetensors"], 1.0)
 
     def test_cowgirl_doggy_handjob_load_from_text_kinds(self) -> None:
         """Freeform text box kinds must load optional pose LoRAs when present."""

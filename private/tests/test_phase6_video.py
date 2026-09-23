@@ -81,6 +81,7 @@ class Phase6MotionTests(unittest.TestCase):
         self.assertIn("m15510n4ry", text.lower())
         self.assertIn("missionary", text.lower())
         self.assertIn("vagina", text.lower())
+        self.assertNotIn("Motion:", text)
 
     def test_extract_pose_cowgirl_doggy_handjob(self) -> None:
         cg = extract_motion_hints("cowgirl riding")

@@ -218,7 +218,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "missionary_high",
         "high",
-        0.95,
+        1.0,
         (
             "Wan2.2_I2V_Missionary_HIGH.safetensors",
             "Wan2.2 - I2V - Missionary Sex - HIGH 14B.safetensors",
@@ -231,7 +231,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "missionary_low",
         "low",
-        0.90,
+        1.0,
         (
             "Wan2.2_I2V_Missionary_LOW.safetensors",
             "Wan2.2 - I2V - Missionary Sex - LOW 14B.safetensors",
@@ -244,7 +244,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "cowgirl_high",
         "high",
-        0.95,
+        1.0,
         (
             "Wan2.2_I2V_Cowgirl_HIGH.safetensors",
             "Wan22-I2V-HIGH-Hip_Slammin_Assertive_Cowgirl.safetensors",
@@ -257,7 +257,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "cowgirl_low",
         "low",
-        0.90,
+        1.0,
         (
             "Wan2.2_I2V_Cowgirl_LOW.safetensors",
             "Wan22-I2V-LOW-Hip_Slammin_Assertive_Cowgirl.safetensors",
@@ -270,7 +270,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "doggy_high",
         "high",
-        0.95,
+        1.0,
         (
             "Wan2.2_I2V_Doggy_HIGH.safetensors",
             "Wan2.2 - I2V - Doggy Style - 14B_high_noise.safetensors",
@@ -284,7 +284,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "doggy_low",
         "low",
-        0.90,
+        1.0,
         (
             "Wan2.2_I2V_Doggy_LOW.safetensors",
             "Wan2.2 - I2V - Doggy Style - 14B_low_noise.safetensors",
@@ -297,7 +297,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "handjob_high",
         "high",
-        0.95,
+        1.0,
         (
             "Wan2.2_I2V_Handjob_HIGH.safetensors",
             "WAN-2.2-I2V-Handjob-HIGH-v1.safetensors",
@@ -309,7 +309,7 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
     LoraSpec(
         "handjob_low",
         "low",
-        0.90,
+        1.0,
         (
             "Wan2.2_I2V_Handjob_LOW.safetensors",
             "WAN-2.2-I2V-Handjob-LOW-v1.safetensors",
@@ -607,8 +607,8 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     # Oral BJ full-sequence: Blink drives bobbing; DR34ML4Y V2 adds partner body.
     if spec_id.startswith("deepthroat"):
         return oral
-    # Male gen enhancer is redundant when PENISLORA is on for oral-only.
-    if oral and not penetration and spec_id.startswith("male_gen"):
+    # Male gen enhancer is redundant when PENISLORA is on (oral + sex).
+    if (oral or penetration) and spec_id.startswith("male_gen"):
         return False
 
     # Isolation test: oral-only runs go Blink-solo (no DR34ML4Y/PENISLORA) to
@@ -703,8 +703,9 @@ def resolve_video_lora_stack(
         penetration = "penetration" in kinds or any(
             p in kinds for p in ("missionary", "cowgirl", "doggy")
         )
-        # Oral + Blink + DR34: soften PENISLORA/DR34 so they don't invent a 2nd shaft.
-        if nsfw and oral and not penetration:
+        # Pose LoRA owns the act (Oral/Sex gold): soften PENISLORA/DR34 so they
+        # add partner anatomy without inventing extra shafts or fighting motion.
+        if nsfw and ((oral and not penetration) or (penetration and not oral)):
             if spec.id.startswith("penis_lora"):
                 strength = min(strength, 0.82 if spec.stage == "high" else 0.78)
             elif spec.id.startswith("dr34ml4y"):
