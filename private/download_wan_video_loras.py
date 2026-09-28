@@ -72,17 +72,8 @@ DOWNLOADS: list[tuple[str, str, str]] = [
         "Cumshot_LoRA.safetensors",
     ),
     # Pose pack (also scripts/download_pose_loras.py)
-    # Blink Missionary crashes LoraLoaderModelOnly — use Missionary Sex 14B instead
-    (
-        "profpeng/wanmissionsex",
-        "Wan2.2 - I2V - Missionary Sex - HIGH 14B.safetensors",
-        "Wan2.2_I2V_Missionary_HIGH.safetensors",
-    ),
-    (
-        "profpeng/wanmissionsex",
-        "Wan2.2 - I2V - Missionary Sex - LOW 14B.safetensors",
-        "Wan2.2_I2V_Missionary_LOW.safetensors",
-    ),
+    # Missionary = dtwr434 POV Missionary, Civitai-only (1331682, versions
+    # 2098405 HIGH / 2098396 LOW) → Wan2.2_I2V_POVMissionary_{HIGH,LOW}.safetensors
     # Freeform text-box poses (optional; skipped unless prompt names them)
     (
         "KeyOpening8063587/AssertiveCowgirl",

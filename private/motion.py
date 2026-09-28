@@ -434,16 +434,19 @@ def scaffold_i2v_prompt(
             "missionary",
         )
         _sex_wholes = {
+            # POV Missionary LoRA wording (dtwr434): man is the camera, penis enters
+            # from the bottom of the screen. No framing/pose lock — she must lie back.
             "missionary": (
-                "Photorealistic video of the exact woman in the start image having "
-                "missionary sex with one man in this same scene: a man with visible "
-                "torso and hips is with her, exactly one erect penis attached to his "
-                "body (never floating or detached), he is on top, that connected penis "
-                "enters her vagina, then continuous in-and-out thrusting for the entire "
-                "clip — full-shaft travel again and again, not frozen and not a tiny "
-                "wiggle. Keep her exact same face, hair, expression, and background; "
-                "same camera angle and framing; no jumpcut, no pose swap; sharp face "
-                "every frame; one continuous shot"
+                "Photorealistic POV video: the exact woman from the start image is "
+                "lying on her back with her legs spread having missionary sex with a "
+                "man. A man "
+                "is thrusting his penis back and forth inside her vagina at the bottom "
+                "of the screen — exactly one erect penis attached to his hips (never "
+                "floating or detached), continuous in-and-out thrusting for the entire "
+                "clip with full-shaft travel again and again. Movement is fast with "
+                "bouncing breasts, not frozen and not a tiny wiggle. Keep her exact "
+                "same face, hair, and skin tone; sharp face every frame; one "
+                "continuous shot"
             ),
             "cowgirl": (
                 "Photorealistic video of the exact woman in the start image riding "
@@ -495,7 +498,9 @@ def scaffold_i2v_prompt(
                 leads.append("PENISLORA")
             lead = (", ".join(leads) + ". ") if leads else ""
             edit = f"{lead}{_sex_whole}"
-        elif not re.search(r"no jumpcut|same framing|same (camera )?angle", edit, re.I):
+        elif pose != "missionary" and not re.search(
+            r"no jumpcut|same framing|same (camera )?angle", edit, re.I
+        ):
             edit = (
                 f"{edit}. Same camera angle and framing as the start image; "
                 "no jumpcut, no pose swap"

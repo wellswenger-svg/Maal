@@ -152,19 +152,20 @@ def register(add) -> None:
         status="missing",
         download_source="https://huggingface.co/onamissiononamission/F4C3SPL4SH-Cumshot-I2V-Wan2.2-Video-LoRa-K3NK",
     )
+    # dtwr434 POV Missionary (Civitai 1331682) — Sex button motion driver.
     add(
         "lora.video_missionary_high",
-        filename="Wan2.2_I2V_Missionary_HIGH.safetensors",
+        filename="Wan2.2_I2V_POVMissionary_HIGH.safetensors",
         role="lora",
-        status="missing",
-        download_source="https://huggingface.co/profpeng/wanmissionsex",
+        status="installed",
+        download_source="https://civitai.com/models/1331682?modelVersionId=2098405",
     )
     add(
         "lora.video_missionary_low",
-        filename="Wan2.2_I2V_Missionary_LOW.safetensors",
+        filename="Wan2.2_I2V_POVMissionary_LOW.safetensors",
         role="lora",
-        status="missing",
-        download_source="https://huggingface.co/profpeng/wanmissionsex",
+        status="installed",
+        download_source="https://civitai.com/models/1331682?modelVersionId=2098396",
     )
     add(
         "lora.video_cowgirl_high",

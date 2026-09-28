@@ -246,6 +246,9 @@ class LoraStackResolveTests(unittest.TestCase):
             "Wan2.2_I2V_Blink_Blowjob_LOW.safetensors",
             "DR34ML4Y_I2V_14B_HIGH_V2.safetensors",
             "DR34ML4Y_I2V_14B_LOW_V2.safetensors",
+            "Wan2.2_I2V_POVMissionary_HIGH.safetensors",
+            "Wan2.2_I2V_POVMissionary_LOW.safetensors",
+            # Old no-motion pair must never be picked again.
             "Wan2.2_I2V_Missionary_HIGH.safetensors",
             "Wan2.2_I2V_Missionary_LOW.safetensors",
         }
@@ -262,11 +265,15 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("dr34ml4y_low", stack.applied_ids)
         high_files = [f for f, _ in stack.high]
         self.assertIn("DR34ML4Y_I2V_14B_HIGH_V2.safetensors", high_files)
-        self.assertIn("female_gen_high", stack.applied_ids)
+        self.assertNotIn("Wan2.2_I2V_Missionary_HIGH.safetensors", high_files)
+        self.assertNotIn("female_gen_high", stack.applied_ids)
+        self.assertNotIn("female_gen_low", stack.applied_ids)
         self.assertNotIn("deepthroat_high", stack.applied_ids)
         self.assertNotIn("male_gen_high", stack.applied_ids)
         high_map = {f: s for f, s in stack.high}
-        self.assertAlmostEqual(high_map["Wan2.2_I2V_Missionary_HIGH.safetensors"], 1.0)
+        low_map = {f: s for f, s in stack.low}
+        self.assertAlmostEqual(high_map["Wan2.2_I2V_POVMissionary_HIGH.safetensors"], 1.0)
+        self.assertAlmostEqual(low_map["Wan2.2_I2V_POVMissionary_LOW.safetensors"], 1.0)
 
     def test_cowgirl_doggy_handjob_load_from_text_kinds(self) -> None:
         """Freeform text box kinds must load optional pose LoRAs when present."""
@@ -486,8 +493,8 @@ class LoraStackResolveTests(unittest.TestCase):
 
     def test_pose_lora_alias_filename(self) -> None:
         available = {
-            "Wan2.2 - I2V - Missionary Sex - HIGH 14B.safetensors",
-            "Wan2.2 - I2V - Missionary Sex - LOW 14B.safetensors",
+            "wan2.2_i2v_highnoise_pov_missionary_v1.0.safetensors",
+            "wan2.2_i2v_lownoise_pov_missionary_v1.0.safetensors",
             "PENISLORA_22_i2v_HIGH_e320.safetensors",
         }
         with self._patch_lora_dirs([]):
@@ -501,6 +508,6 @@ class LoraStackResolveTests(unittest.TestCase):
         self.assertIn("missionary_low", stack.applied_ids)
         high_files = [f for f, _ in stack.high]
         self.assertIn(
-            "Wan2.2 - I2V - Missionary Sex - HIGH 14B.safetensors",
+            "wan2.2_i2v_highnoise_pov_missionary_v1.0.safetensors",
             high_files,
         )

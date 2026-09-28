@@ -215,16 +215,16 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
         ),
         optional=True,
     ),
+    # dtwr434 POV Missionary (Civitai 1331682) — Wan 2.2 I2V HIGH/LOW, handles the
+    # penis starting outside the vagina. Same role as JFJ for Oral. The old
+    # profpeng "Missionary Sex 14B" pair produced no motion, so it is not listed.
     LoraSpec(
         "missionary_high",
         "high",
         1.0,
         (
-            "Wan2.2_I2V_Missionary_HIGH.safetensors",
-            "Wan2.2 - I2V - Missionary Sex - HIGH 14B.safetensors",
-            "Wan2.2-I2V-Missionary-Sex-HIGH14B.safetensors",
-            "iGoon_Blink_Missionary_I2V_HIGH v2.safetensors",
-            "iGoon - Blink_Missionary_I2V_HIGH.safetensors",
+            "Wan2.2_I2V_POVMissionary_HIGH.safetensors",
+            "wan2.2_i2v_highnoise_pov_missionary_v1.0.safetensors",
         ),
         optional=True,
     ),
@@ -233,11 +233,8 @@ OPTIONAL_SPECS: tuple[LoraSpec, ...] = (
         "low",
         1.0,
         (
-            "Wan2.2_I2V_Missionary_LOW.safetensors",
-            "Wan2.2 - I2V - Missionary Sex - LOW 14B.safetensors",
-            "Wan2.2-I2V-Missionary-Sex-LOW14B.safetensors",
-            "iGoon - Blink_Missionary_I2V_LOW v2.safetensors",
-            "iGoon_Blink_Missionary_I2V_LOW.safetensors",
+            "Wan2.2_I2V_POVMissionary_LOW.safetensors",
+            "wan2.2_i2v_lownoise_pov_missionary_v1.0.safetensors",
         ),
         optional=True,
     ),
@@ -628,6 +625,9 @@ def _action_allows(spec_id: str, kinds: set[str], *, nsfw: bool) -> bool:
     # Penetration-only: skip oral blowjob LoRAs.
     if penetration and not oral:
         if spec_id.startswith("deepthroat"):
+            return False
+        # Missionary mirrors Oral gold: pose LoRA + soft PENISLORA/DR34 only.
+        if "missionary" in kinds and spec_id.startswith("female_gen"):
             return False
 
     # Handjob-only: keep penis LoRAs; drop oral + female gen + finish noise.
