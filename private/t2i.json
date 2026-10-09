@@ -1,0 +1,71 @@
+{
+  "unet": "flux1-dev-fp8.safetensors",
+  "steps": 30,
+  "guidance": 3.0,
+  "sampler": "euler",
+  "scheduler": "beta",
+  "default_aspect": "portrait",
+  "aspects": {
+    "portrait": { "label": "2:3", "size": [832, 1216] },
+    "tall": { "label": "9:16", "size": [768, 1344] },
+    "square": { "label": "1:1", "size": [1024, 1024] },
+    "landscape": { "label": "3:2", "size": [1216, 832] }
+  },
+  "prompt_suffix": "Natural skin with visible pores, realistic lighting, shot on a phone camera.",
+  "loras": [
+    {
+      "file": "flux_ultrareal_v2.safetensors",
+      "strength": 0.8,
+      "trigger": "amateurish photo"
+    },
+    {
+      "file": "flux_skin_texture_v25.safetensors",
+      "strength": 0.45,
+      "trigger": "skin texture style, realism, detailed"
+    },
+    {
+      "file": "flux_sameface_fix.safetensors",
+      "strength": -0.8,
+      "only_without_character": true
+    },
+    {
+      "file": "aidmaNSFWunlock-FLUX-V0.2.safetensors",
+      "strength": 0.7,
+      "trigger": "aidmaNSFWunlock",
+      "when": "\\b(nude|naked|topless|nsfw|nipples?|pussy|vagina|undressed|bare breasts?)\\b"
+    }
+  ],
+  "characters": [],
+  "outfits": [
+    {
+      "id": "white_sundress",
+      "name": "White sundress",
+      "text": "She is wearing a white cotton sundress with thin spaghetti straps, a square neckline, a fitted bodice and a loose knee-length skirt, no jewelry."
+    },
+    {
+      "id": "black_bodycon",
+      "name": "Black bodycon",
+      "text": "She is wearing a tight black ribbed bodycon mini dress with long sleeves and a high round neck, plain black heels."
+    },
+    {
+      "id": "denim_crop",
+      "name": "Crop top + jeans",
+      "text": "She is wearing a plain white fitted cropped tank top and high-waisted light-blue straight-leg jeans with a brown leather belt, white sneakers."
+    },
+    {
+      "id": "red_bikini",
+      "name": "Red bikini",
+      "text": "She is wearing a plain solid red triangle string bikini with thin ties at the hips and neck."
+    },
+    {
+      "id": "gym",
+      "name": "Gym set",
+      "text": "She is wearing a matching sage-green seamless sports bra and high-waisted sage-green leggings, white trainers."
+    },
+    {
+      "id": "lingerie_black",
+      "name": "Black lace lingerie",
+      "text": "She is wearing a matching black lace bralette and black lace high-cut panties, no other clothing."
+    }
+  ]
+}
